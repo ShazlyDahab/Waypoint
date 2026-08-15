@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Jobs — Waypoint{% endblock %}
+{% block content %}
+<h1>Jobs</h1>
+<p class="muted">Pipeline scripts run here as background processes on this machine. The live dashboard opens
+OpenCV preview windows on whichever machine runs this portal server — if that's headless, use its own terminal
+output/logs below instead of expecting a window to appear.</p>
+
+<div class="panel">
+  <form class="inline" method="post" action="/jobs/start/calibrate_all">
+    <button class="btn" type="submit">Run calibration (all cameras)</button>
+  </form>
+  <form class="inline" method="post" action="/jobs/start/dashboard">
+    <button class="btn btn-primary" type="submit">Start live dashboard</button>
+  </form>
+  <form class="inline" method="post" action="/jobs/start/restreamer">
+    <button class="btn" type="submit">Start restreamer (go2rtc)</button>
+  </form>
+</div>
+<p class="muted">The restreamer (go2rtc) is what makes live camera viewing in
+<a href="/app/cameras">Live Monitoring</a> possible — browsers can't play RTSP directly, so go2rtc converts
+each camera's RTSP feed into WebRTC that a <code>&lt;video&gt;</code> element can show. It needs the go2rtc
+binary at <code>bin/go2rtc</code> (download from
+<a href="https://github.com/AlexxIT/go2rtc/releases">github.com/AlexxIT/go2rtc/releases</a>, then
+<code>chmod +x bin/go2rtc</code>) and won't start without it. Everything else — detection overlays, heatmaps,
+counts, insights — works without it; only live video needs it.</p>
+
+{% for j in jobs %}
+<div class="panel">
+  <h2>{{ j.name }}
+    {% if j.state == 'running' %}<span class="badge badge-ok">running</span>
+    {% elif j.state == 'finished' %}<span class="badge badge-muted">finished</span>
+    {% elif j.state == 'failed' %}<span class="badge badge-danger">failed (code {{ j.returncode }})</span>
+    {% else %}<span class="badge badge-muted">{{ j.state }}</span>{% endif %}
+  </h2>
+  <p class="muted">{{ j.cmd }}</p>
+  {% if j.state == 'running' %}
+  <form method="post" action="/jobs/{{ j.name }}/stop">
+    <button class="btn btn-danger btn-sm" type="submit">Stop</button>
+  </form>
+  {% endif %}
+  <pre class="log">{{ j.log }}</pre>
+</div>
+{% else %}
+<div class="panel"><p class="muted">No jobs have been started yet.</p></div>
+{% endfor %}
+{% endblock %}

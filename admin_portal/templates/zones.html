@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Zones — {{ camera_id }}{% endblock %}
+{% block content %}
+<h1>Camera handoffs — {{ camera_id }}</h1>
+<p><a href="/cameras">&larr; back to cameras</a></p>
+
+{% if not zones %}
+<div class="panel">
+  <p class="muted">No zones_{{ camera_id }}.json yet. Run calibration for this camera first — it watches real
+  foot traffic and proposes an entrance line and handoff points automatically.</p>
+  <form method="post" action="/cameras/{{ camera_id }}/zones/recalibrate">
+    <button class="btn btn-primary" type="submit">Run calibration for {{ camera_id }}</button>
+  </form>
+</div>
+{% else %}
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Calibration snapshot</h2>
+    {% if snapshot_exists %}
+      <img class="preview" src="/media/calibration_snapshot_{{ camera_id }}.png">
+    {% else %}
+      <p class="muted">No snapshot image found.</p>
+    {% endif %}
+    <p class="muted">Calibrated at {{ zones.calibrated_at }} — {{ zones.people_observed }} people observed over {{ zones.observation_seconds }}s.</p>
+    <form method="post" action="/cameras/{{ camera_id }}/zones/recalibrate">
+      <button class="btn" type="submit">Re-run calibration</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Entrance line</h2>
+    {% if zones.entrance_line %}
+      <p>Edge: <strong>{{ zones.entrance_line.edge }}</strong></p>
+      <p class="muted">start {{ zones.entrance_line.start }} → end {{ zones.entrance_line.end }}</p>
+    {% else %}
+      <p class="muted">No entrance line detected (not enough edge traffic during calibration).</p>
+    {% endif %}
+    <h2>Dwell zone</h2>
+    <p class="muted">{{ zones.coverage_area|length }} hull point(s) covering all observed foot positions.</p>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Camera handoff points <span class="muted">— doorways where someone leaving this camera's view appears on another camera</span></h2>
+  <form method="post" action="/cameras/{{ camera_id }}/zones/gates/save">
+    <table>
+      <tr><th>Handoff point</th><th>Points seen</th><th>Leads to</th><th>Remove</th></tr>
+      {% for g in zones.gates %}
+      <tr>
+        <td>{{ g.gate_id }}</td>
+        <td class="muted">{{ g.point_count }}</td>
+        <td>
+          <input type="hidden" name="gate_id" value="{{ g.gate_id }}">
+          <select name="leads_to__{{ g.gate_id }}">
+            <option value="" {% if not g.leads_to %}selected{% endif %}>— unknown / unlinked —</option>
+            {% for other in other_camera_ids %}
+            <option value="{{ other }}" {% if g.leads_to == other %}selected{% endif %}>{{ other }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td><input type="checkbox" name="delete__{{ g.gate_id }}"></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">No handoff points detected.</td></tr>
+      {% endfor %}
+    </table>
+    {% if zones.gates %}<button class="btn btn-primary" type="submit" style="margin-top:0.8rem">Save handoff links</button>{% endif %}
+  </form>
+  <p class="muted" style="margin-top:0.6rem">Set each handoff point's destination camera by hand, based on your store layout — this is what lets one person walking between cameras be counted as one visitor rather than two.</p>
+</div>
+
+<div class="panel">
+<div class="panel">
+  <h2>Advanced: raw JSON</h2>
+  <p class="muted">Full contents of zones_{{ camera_id }}.json — edit polygons or any other field directly. Must stay valid JSON.</p>
+  <form method="post" action="/cameras/{{ camera_id }}/zones/raw/save">
+    <textarea name="raw" rows="18">{{ zones_raw }}</textarea>
+    <button class="btn btn-primary" type="submit" style="margin-top:0.8rem">Save raw JSON</button>
+  </form>
+</div>
+
+{% endif %}
+{% endblock %}

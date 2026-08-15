@@ -1,0 +1,69 @@
+{
+  "camera_id": "entrance_cam",
+  "rtsp_url": "rtsp://demo:demo@192.168.1.50:554/stream1",
+  "frame_size": [
+    1078,
+    720
+  ],
+  "observation_seconds": 900,
+  "people_observed": 187,
+  "entrance_line": {
+    "edge": "left",
+    "start": [
+      140,
+      190
+    ],
+    "end": [
+      140,
+      390
+    ]
+  },
+  "gates": [
+    {
+      "gate_id": "gate_1",
+      "centroid": [
+        935,
+        370
+      ],
+      "polygon": [
+        [
+          860,
+          280
+        ],
+        [
+          1010,
+          280
+        ],
+        [
+          1010,
+          460
+        ],
+        [
+          860,
+          460
+        ]
+      ],
+      "point_count": 96,
+      "leads_to": null
+    }
+  ],
+  "calibrated_at": "2026-08-05 09:12:00",
+  "coverage_area": [
+    [
+      10,
+      340
+    ],
+    [
+      1068,
+      340
+    ],
+    [
+      1068,
+      715
+    ],
+    [
+      10,
+      715
+    ]
+  ]
+}

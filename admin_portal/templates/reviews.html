@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Review Queue — Waypoint{% endblock %}
+{% block content %}
+<h1>Review queue</h1>
+<p class="muted">Ambiguous Re-ID matches the live dashboard wasn't confident enough to auto-merge. Confirming
+"same person" here writes to confirmed_merges.json, the same file resolve_reviews.py produces — daily/weekly
+totals should subtract these from the raw unique-visitor count.</p>
+
+<div class="panel">
+  <p>{{ pending|length }} pending review(s). {{ confirmed_count }} confirmed merge(s) total.</p>
+</div>
+
+{% for r in pending %}
+<div class="panel">
+  <h2>{{ r.review_id }}</h2>
+  <div class="row">
+    <div>
+      <p><strong>Candidate global#{{ r.candidate_global_id }}</strong> — last seen on {{ r.from_camera }}</p>
+      <p><strong>New arrival global#{{ r.provisional_global_id }}</strong> — appeared on {{ r.to_camera }}</p>
+      <p>Similarity score: <strong>{{ r.similarity_score }}</strong></p>
+    </div>
+    <div>
+      {% if r.new_crop_url %}
+        <img class="preview" src="{{ r.new_crop_url }}" style="max-height:220px">
+      {% else %}
+        <p class="muted">No crop image saved.</p>
+      {% endif %}
+    </div>
+  </div>
+  <form method="post" action="/reviews/{{ r.review_id }}/resolve" style="margin-top:0.8rem">
+    <button class="btn btn-primary" type="submit" name="decision" value="same">Same person — merge</button>
+    <button class="btn" type="submit" name="decision" value="different">Different person — keep separate</button>
+    <button class="btn" type="submit" name="decision" value="skip">Skip for now</button>
+  </form>
+</div>
+{% else %}
+<div class="panel"><p class="muted">No pending reviews.</p></div>
+{% endfor %}
+{% endblock %}

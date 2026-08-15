@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block head %}
+{# Paints the paper ground the instant the HTML parses, so the freshly
+   rendered home page never flashes before the splash module loads. The
+   failsafe timeout matters: if the bundle 404s or is blocked, the page must
+   still reveal itself rather than sitting behind a blank sheet forever. #}
+<script>
+  (function () {
+    try {
+      var replay = sessionStorage.getItem('waypoint.splash.replay') === '1';
+      var firstVisit = sessionStorage.getItem('waypoint.splash.seen') === null;
+      var forced = /[?&]splash=1(&|$)/.test(location.search);
+      if (/[?&]splash=0(&|$)/.test(location.search)) return;
+      if (!replay && !firstVisit && !forced) return;
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      document.documentElement.classList.add('splash-pending');
+      setTimeout(function () {
+        document.documentElement.classList.remove('splash-pending');
+      }, 3500);
+    } catch (e) { /* storage blocked: just show the page */ }
+  })();
+</script>
+{% endblock %}
+{% block title %}Home — Waypoint{% endblock %}
+{% block content %}
+<h1>Setup overview</h1>
+
+<div class="panel">
+  <h2>Pipeline status</h2>
+  <table>
+    <tr><th>Step</th><th>Status</th><th></th></tr>
+    <tr>
+      <td>1. Cameras registered</td>
+      <td>{% if cameras %}<span class="badge badge-ok">{{ cameras|length }} camera(s)</span>{% else %}<span class="badge badge-warn">none yet</span>{% endif %}</td>
+      <td><a class="btn btn-sm" href="/cameras">Manage</a></td>
+    </tr>
+    <tr>
+      <td>2. Zones &amp; gates calibrated</td>
+      <td>
+        {% if calibrated_count == cameras|length and cameras %}
+          <span class="badge badge-ok">{{ calibrated_count }}/{{ cameras|length }} done</span>
+        {% elif calibrated_count > 0 %}
+          <span class="badge badge-warn">{{ calibrated_count }}/{{ cameras|length }} done</span>
+        {% else %}
+          <span class="badge badge-muted">not started</span>
+        {% endif %}
+      </td>
+      <td><a class="btn btn-sm" href="/cameras">Review</a></td>
+    </tr>
+    <tr>
+      <td>3. Live dashboard</td>
+      <td>
+        {% if dashboard_running %}<span class="badge badge-ok">running</span>{% else %}<span class="badge badge-muted">stopped</span>{% endif %}
+      </td>
+      <td><a class="btn btn-sm" href="/jobs">Jobs</a></td>
+    </tr>
+    <tr>
+      <td>Pending identity reviews</td>
+      <td>
+        {% if pending_reviews > 0 %}<span class="badge badge-warn">{{ pending_reviews }} pending</span>{% else %}<span class="badge badge-ok">clear</span>{% endif %}
+      </td>
+      <td><a class="btn btn-sm" href="/reviews">Review</a></td>
+    </tr>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>Quick actions</h2>
+  <form class="inline" method="post" action="/jobs/start/calibrate_all">
+    <button class="btn" type="submit" {% if not cameras %}disabled{% endif %}>Run calibration for all cameras</button>
+  </form>
+  <a class="btn" href="/app/cameras">Open live monitoring</a>
+  <form class="inline" method="post" action="/jobs/start/dashboard">
+    <button class="btn btn-primary" type="submit" {% if not cameras %}disabled{% endif %}>Start live dashboard</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{# Cold-boot splash. Only the portal's entry page loads it — see
+   splash_assets() in main.py. Gated further by sessionStorage in mount.tsx,
+   and forced with ?splash=1 while developing. #}
+{% if splash_js %}
+  {% for href in splash_css %}<link rel="stylesheet" href="{{ href }}">{% endfor %}
+  <script type="module" src="{{ splash_js }}"></script>
+{% endif %}
+{% endblock %}

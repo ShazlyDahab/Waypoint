@@ -1,0 +1,405 @@
+/* Live Monitoring — same Modernist system as the Jinja portal (DESIGN.md).
+   Tokens are duplicated rather than imported because this app builds
+   independently; they must stay in sync with admin_portal/static/style.css.
+
+   The split that matters here: chrome is light (a reading surface), but any
+   surface whose SUBJECT is video or heat imagery sits on near-black, because
+   footage and heat gradients need a dark surround to read correctly. */
+
+:root {
+  color-scheme: light;
+
+  --paper:      oklch(0.981 0.004 85);
+  --surface:    oklch(0.998 0.002 85);
+  --ink:        oklch(0.21 0.012 70);
+  --ink-muted:  oklch(0.50 0.010 75);
+  /* Tertiary CONTENT (eyebrows, column heads, legends). Must clear AA 4.5:1
+     on paper, so it cannot go lighter than this — an earlier 0.64 measured
+     3.18:1 and failed. --ink-disabled is the separate, exempt role. */
+  --ink-faint:    oklch(0.545 0.010 78);
+  --ink-disabled: oklch(0.68 0.008 78);
+  --rule:       oklch(0.885 0.005 80);
+
+  --accent:       oklch(0.47 0.19 264);
+  --accent-hover: oklch(0.39 0.19 264);
+  --accent-wash:  oklch(0.955 0.028 264);
+
+  --ok:     oklch(0.52 0.14 150);
+  --warn:   oklch(0.62 0.15 70);
+  --danger: oklch(0.52 0.19 27);
+
+  /* Dark media surround. Scoped to .canvas — never a reading surface. */
+  --canvas:      oklch(0.16 0.008 70);
+  --canvas-ink:  oklch(0.93 0.006 85);
+  --canvas-rule: oklch(0.30 0.008 70);
+
+  --t-micro:   0.6875rem;
+  --t-small:   0.8125rem;
+  --t-body:    0.9375rem;
+  --t-h2:      1.375rem;
+  --t-h1:      1.9375rem;
+
+  --sans: "Helvetica Neue", Helvetica, Inter, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+
+  /* One control-height scale, shared by buttons, inputs and selects. Fixed
+     heights rather than padding alone: an <a class="btn"> and a
+     <button class="btn"> derive different heights from text metrics, which
+     put four different control heights on a single page before this. */
+  --control-h:    34px;
+  --control-h-sm: 26px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+table, .num { font-variant-numeric: tabular-nums; }
+::selection { background: var(--accent-wash); }
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { color: var(--accent-hover); }
+
+/* ------------------------------------------------------------ masthead --- */
+
+.topbar {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 1.25rem 2rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+  row-gap: 0.6rem;
+}
+
+.topbar a.back {
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: var(--t-small);
+  transition: color 140ms var(--ease);
+}
+.topbar a.back:hover { color: var(--ink); }
+
+/* --------------------------------------------------------------- brand --- */
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+.brand .mark { display: block; flex: none; }
+/* Uppercase and tracked, matching the splash exactly — the brief requires
+   the header lockup and the splash lockup to be the same lockup, and the
+   splash's resting tracking is LOCKUP.TRACKING_TO_EM (0.06em). */
+.brand .wordmark {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* "Admin" is a qualifier, not part of the name: same size, lighter weight,
+   separated by space rather than punctuation. */
+.brand .sub {
+  font-weight: 400;
+  color: var(--ink-muted);
+  margin-left: 0.4em;
+}
+
+main.page { max-width: 1140px; margin: 0 auto; padding: 2.5rem 2rem 5rem; }
+
+h1 {
+  font-size: var(--t-h1);
+  font-weight: 600;
+  letter-spacing: -0.021em;
+  margin: 0 0 0.75rem;
+  line-height: 1.15;
+  padding-bottom: 0.875rem;
+  border-bottom: 2px solid var(--ink);
+}
+h2 { font-size: var(--t-h2); font-weight: 600; letter-spacing: -0.021em; margin: 0 0 0.5rem; }
+p { max-width: 68ch; }
+.muted { color: var(--ink-muted); font-size: var(--t-small); }
+.error-text { color: var(--danger); font-size: var(--t-small); margin-top: 0.5rem; }
+
+/* -------------------------------------------------------------- panels --- */
+
+.panel {
+  border-top: 1px solid var(--rule);
+  padding: 1.5rem 0 0;
+  margin: 2rem 0;
+}
+.panel > :last-child { margin-bottom: 0; }
+
+/* ------------------------------------------------------------- controls --- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  padding: 0 0.9rem;
+  line-height: 1;
+  border-radius: 0;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: var(--t-small);
+  font-family: inherit;
+  text-decoration: none;
+  transition: background-color 140ms var(--ease), color 140ms var(--ease),
+              border-color 140ms var(--ease);
+}
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled, .btn[disabled] {
+  border-color: var(--rule); color: var(--ink-disabled);
+  cursor: not-allowed; background: transparent;
+}
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--surface); }
+.btn-sm { height: var(--control-h-sm); padding: 0 0.6rem; font-size: var(--t-micro); }
+
+input[type=text], input[type=file], input[type=number], select {
+  height: var(--control-h);
+  padding: 0 0.65rem;
+  border-radius: 0;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--t-body);
+  font-family: inherit;
+  transition: border-color 140ms var(--ease);
+}
+input:hover, select:hover { border-color: var(--ink-faint); }
+input:focus, select:focus { border-color: var(--accent); }
+input::placeholder { color: var(--ink-disabled); }
+
+label {
+  display: block;
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  color: var(--ink-faint);
+  margin: 1rem 0 0.3rem;
+}
+.hint {
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  margin: 0 0 0.4rem;
+  max-width: 44ch;
+}
+.hint code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--accent-wash);
+  padding: 0.05em 0.3em;
+}
+
+.row { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; }
+
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left;
+  color: var(--ink-faint);
+  font-weight: 600;
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  border-bottom: 1px solid var(--ink);
+  padding: 0 1rem 0.5rem 0;
+}
+td { padding: 0.625rem 1rem 0.625rem 0; border-bottom: 1px solid var(--rule); font-size: var(--t-small); }
+
+/* ---------------------------------------------------------- camera list --- */
+/* Not a card grid: rule-bounded plates where the reference frame is the
+   subject and the metadata sits beneath it, flush left. */
+
+.camera-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 2.5rem 2rem;
+  margin-top: 2.5rem;
+}
+.camera-plate { display: flex; flex-direction: column; }
+.camera-plate .frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--canvas);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+.camera-plate .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camera-plate .meta { padding: 0.75rem 0 0; }
+.camera-plate .name { font-weight: 600; letter-spacing: -0.015em; }
+.camera-plate .id {
+  color: var(--ink-faint); font-size: var(--t-micro);
+  font-family: var(--mono); margin-top: 0.15rem;
+}
+.camera-plate .actions { display: flex; gap: 0.5rem; margin-top: 0.875rem; }
+
+/* Status: colour + geometric mark + text label, all three. Never colour
+   alone (PRODUCT.md accessibility). Marks are distinguishable in greyscale
+   and to every form of colour blindness. */
+.status {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: var(--t-micro); text-transform: uppercase;
+  letter-spacing: 0.07em; font-weight: 600;
+}
+.status::before { content: ""; width: 8px; height: 8px; background: currentColor; flex: none; }
+.status-online { color: var(--ok); }
+.status-online::before { border-radius: 50%; }                  /* circle  */
+.status-degraded { color: var(--warn); }
+.status-degraded::before { transform: rotate(45deg); }          /* diamond */
+.status-offline { color: var(--danger); }                       /* square  */
+.status-not_configured { color: var(--ink-faint); }
+.status-not_configured::before {                                /* hollow  */
+  background: transparent; border: 1.5px solid currentColor; border-radius: 50%;
+}
+/* Over a video frame the same marks need a dark plate to stay legible. */
+.frame .status, .frame .count {
+  position: absolute; top: 0;
+  padding: 0.4rem 0.6rem;
+  background: oklch(0.16 0.008 70 / 0.82);
+}
+.frame .status { left: 0; }
+.frame .status-online { color: oklch(0.74 0.16 150); }
+.frame .status-degraded { color: oklch(0.80 0.15 70); }
+.frame .status-offline { color: oklch(0.70 0.19 27); }
+.frame .status-not_configured { color: oklch(0.72 0.008 80); }
+.frame .count {
+  right: 0; color: var(--canvas-ink);
+  font-size: var(--t-micro); font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.05em;
+}
+
+/* ---------------------------------------------------------- dark canvas --- */
+/* Applied only where video or heat imagery is the subject. */
+
+.canvas { background: var(--canvas); color: var(--canvas-ink); position: relative; }
+.canvas .muted { color: oklch(0.68 0.008 80); }
+
+.canvas-bar {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; row-gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  background: var(--canvas);
+  color: var(--canvas-ink);
+  border-bottom: 1px solid var(--canvas-rule);
+}
+/* The brand tokens are tuned for paper. On the near-black bar the muted
+   qualifier measured 3.25:1 and the ultramarine dot 2.71:1, so both are
+   re-pitched lighter here rather than reused unchanged. */
+.canvas-bar .brand { color: var(--canvas-ink); }
+.canvas-bar .brand .sub { color: oklch(0.72 0.008 80); }
+.canvas-bar .brand .mark circle { fill: oklch(0.68 0.17 264); }
+.canvas-bar a { color: oklch(0.72 0.008 80); text-decoration: none; font-size: var(--t-small); }
+.canvas-bar a:hover { color: var(--canvas-ink); }
+.canvas-bar .btn { border-color: var(--canvas-rule); color: var(--canvas-ink); font-size: var(--t-micro); }
+.canvas-bar .btn:hover { background: var(--canvas-ink); color: var(--canvas); }
+.canvas-bar .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.canvas-bar label {
+  margin: 0; display: inline-flex; align-items: center; gap: 0.35rem;
+  color: oklch(0.72 0.008 80); text-transform: none; letter-spacing: 0;
+  font-size: var(--t-micro); font-weight: 400;
+}
+.canvas-bar .cam-id { font-family: var(--mono); font-size: var(--t-micro); color: oklch(0.72 0.008 80); }
+
+/* Instruction strip beneath the bar while placing service points. */
+.canvas-note {
+  padding: 0.75rem 2rem;
+  background: oklch(0.20 0.008 70);
+  color: oklch(0.80 0.008 80);
+  border-bottom: 1px solid var(--canvas-rule);
+  font-size: var(--t-small);
+}
+.canvas-note p { max-width: 90ch; margin: 0; }
+.canvas-note label { color: oklch(0.66 0.008 80); }
+
+.grid-wall { display: grid; gap: 1px; width: 100%; height: 100%; background: var(--canvas-rule); }
+.grid-tile { position: relative; overflow: hidden; background: var(--canvas); }
+.grid-tile .tile-label {
+  position: absolute; top: 0; left: 0; z-index: 1;
+  padding: 0.35rem 0.6rem;
+  background: oklch(0.16 0.008 70 / 0.82);
+  color: var(--canvas-ink);
+  font-size: var(--t-micro); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* --------------------------------------------------------------- splash --- */
+/* Cold-boot brand moment. See DESIGN.md "Motion" for why this one sequence
+   is exempt from the no-page-load-choreography rule. */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--paper);   /* token, not hardcoded — correct on both surfaces */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.splash-canvas { position: absolute; inset: 0; display: block; }
+.splash-lockup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+.splash-lockup .brand { color: var(--ink); gap: 0; }
+.splash-wordmark {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  line-height: 1;
+  text-transform: uppercase;
+  display: inline-flex;
+}
+.splash-error {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--danger);
+  max-width: 44ch;
+  text-align: center;
+}
+/* Past the hard ceiling with bootstrap still running: a quiet pulse on the
+   dot. Nothing new enters the frame. */
+.brand.is-waiting .mark circle { animation: splash-pulse 1.6s ease-in-out infinite; }
+@keyframes splash-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand.is-waiting .mark circle { animation: none; }
+}

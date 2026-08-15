@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Insights — Waypoint{% endblock %}
+{% block content %}
+<h1>Business insights</h1>
+<div class="range-bar">
+  <span class="eyebrow">Showing {{ range_label }}</span>
+  <nav class="range-presets">
+    <a href="/insights?days=7" class="{{ 'active' if days == 7 and not custom_range else '' }}">Last 7 days</a>
+    <a href="/insights?days=30" class="{{ 'active' if days == 30 and not custom_range else '' }}">Last 30 days</a>
+    <a href="/insights?days=90" class="{{ 'active' if days == 90 and not custom_range else '' }}">Last 90 days</a>
+  </nav>
+  <form method="get" action="/insights" class="range-form">
+    <label for="from">From</label>
+    <input type="date" id="from" name="from" value="{{ date_from }}" required>
+    <label for="to">To</label>
+    <input type="date" id="to" name="to" value="{{ date_to }}" required>
+    <button class="btn btn-sm" type="submit">Apply</button>
+    {% if custom_range %}<a class="range-clear" href="/insights">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi-tile">
+    <div class="kpi-label">Store entries</div>
+    <div class="kpi-value">{{ "{:,}".format(totals.entries) }}</div>
+    <div class="muted" style="font-size:0.75rem">people walking in</div>
+  </div>
+  <div class="kpi-tile">
+    <div class="kpi-label">Store exits</div>
+    <div class="kpi-value">{{ "{:,}".format(totals.exits) }}</div>
+    <div class="muted" style="font-size:0.75rem">people walking out</div>
+  </div>
+  <div class="kpi-tile">
+    <div class="kpi-label">Unique visitors</div>
+    <div class="kpi-value">{{ "{:,}".format(true_unique_visitors) }}</div>
+    <div class="muted" style="font-size:0.75rem">{{ totals.raw_new_visitors }} raw &minus; {{ confirmed_merges }} confirmed merge(s)</div>
+  </div>
+  <div class="kpi-tile">
+    <div class="kpi-label">Avg time in store</div>
+    <div class="kpi-value">
+      {% if visit_stats.avg_seconds %}{{ (visit_stats.avg_seconds / 60)|round(1) }} min{% else %}—{% endif %}
+    </div>
+    <div class="muted" style="font-size:0.75rem">{{ visit_stats.visits }} visit(s) measured</div>
+  </div>
+  <div class="kpi-tile">
+    <div class="kpi-label">Busiest hour</div>
+    <div class="kpi-value">{% if busiest_hour and busiest_hour[1] > 0 %}{{ "%02d:00"|format(busiest_hour[0]) }}{% else %}—{% endif %}</div>
+  </div>
+</div>
+
+{% if confirmed_merges == 0 and totals.raw_new_visitors > 0 %}
+<p class="muted">No identity reviews have been confirmed yet — unique visitor counts above are the raw count.
+Check the <a href="/reviews">Review Queue</a> to correct for the same person being counted twice on different cameras.</p>
+{% endif %}
+
+<div class="panel insight-section">
+  <h2>When people come in</h2>
+  <p class="muted">Store entries by hour of day, summed across every camera that has an entrance line configured.</p>
+  {% if has_peak_data %}
+    {{ peak_chart|safe }}
+    {{ peak_table|safe }}
+  {% else %}
+    <p class="muted">No entries recorded yet in this range — needs an entrance line configured and the live pipeline running.</p>
+  {% endif %}
+
+  <h3 style="font-size:0.9rem;color:var(--ink-muted);font-weight:600;margin-top:1.4rem">By day of week &amp; hour</h3>
+  {% if has_heatmap_data %}
+    {{ heatmap_chart|safe }}
+    {{ heatmap_legend|safe }}
+    {{ heatmap_table|safe }}
+  {% else %}
+    <p class="muted">No data yet in this range.</p>
+  {% endif %}
+</div>
+
+<div class="panel insight-section">
+  <h2>Cashier &amp; service points</h2>
+  <p class="muted">
+    How long customers stand at each register or service counter, and how many were served.
+    Service points are placed by clicking on the camera view in
+    <a href="/app/cameras">Live Monitoring</a> — no floor plan needed.
+  </p>
+  {% if has_service_data %}
+    <h3 style="font-size:0.9rem;color:var(--ink-muted);font-weight:600">Average time spent at each service point</h3>
+    {{ service_chart|safe }}
+    {{ service_table|safe }}
+    <h3 style="font-size:0.9rem;color:var(--ink-muted);font-weight:600;margin-top:1.4rem">Average service time by hour of day</h3>
+    <p class="muted">Where this climbs, checkout is slowing down — usually where more staff would pay off.</p>
+    {{ service_hourly_chart|safe }}
+  {% else %}
+    <p class="muted">
+      No service-point data yet. Open <a href="/app/cameras">Live Monitoring</a>, pick the camera that sees
+      your register, and click "Place service point" on the spot where customers stand to be served.
+      Timings start accumulating once the live pipeline runs.
+    </p>
+  {% endif %}
+</div>
+
+<div class="panel insight-section">
+  <h2>How long visitors stay</h2>
+  <p class="muted">
+    Total time in the store per visitor, measured across every camera that saw them — not time in one
+    camera's view. Visits shorter than 5 seconds are treated as someone clipping the edge of frame, not a visit.
+  </p>
+  {% if has_visit_data %}
+    {{ visit_chart|safe }}
+    {{ visit_table|safe }}
+    <p class="muted">Longest single visit in range: {{ (visit_stats.longest_seconds / 60)|round(1) }} min.</p>
+  {% else %}
+    <p class="muted">No completed visits recorded yet in this range — builds up while the live pipeline runs.</p>
+  {% endif %}
+</div>
+
+<div class="panel insight-section">
+  <h2>Daily traffic &amp; visitor trends</h2>
+  <p class="muted">Day-by-day totals, not just the live count.</p>
+  <div class="grid-2">
+    <div>
+      <h3 style="font-size:0.9rem;color:var(--ink-muted);font-weight:600">Store entries per day</h3>
+      {% if has_traffic_data %}{{ traffic_chart|safe }}{{ traffic_table|safe }}
+      {% else %}<p class="muted">No data yet in this range.</p>{% endif %}
+    </div>
+    <div>
+      <h3 style="font-size:0.9rem;color:var(--ink-muted);font-weight:600">New visitors per day (raw)</h3>
+      {% if has_visitor_data %}{{ visitors_chart|safe }}{{ visitors_table|safe }}
+      {% else %}<p class="muted">No data yet in this range.</p>{% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"traversal attempt -> %{http_code}\\\\n\" \"http://127.0.0.1:8800/media/../admin_portal/main.py\")",
+      "Bash(curl -s -o /dev/null -w \"non-image ext -> %{http_code}\\\\n\" \"http://127.0.0.1:8800/media/cameras.json\")",
+      "Bash(curl -s -o /dev/null -w \"valid image -> %{http_code}\\\\n\" \"http://127.0.0.1:8800/media/floor_plan.png\")"
+    ]
+  }
+}

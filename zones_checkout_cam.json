@@ -1,0 +1,59 @@
+{
+  "camera_id": "checkout_cam",
+  "rtsp_url": "rtsp://demo:demo@192.168.1.51:554/stream1",
+  "frame_size": [
+    1280,
+    720
+  ],
+  "observation_seconds": 900,
+  "people_observed": 152,
+  "entrance_line": null,
+  "gates": [
+    {
+      "gate_id": "gate_1",
+      "centroid": [
+        130,
+        400
+      ],
+      "polygon": [
+        [
+          100,
+          380
+        ],
+        [
+          160,
+          380
+        ],
+        [
+          160,
+          420
+        ],
+        [
+          100,
+          420
+        ]
+      ],
+      "point_count": 88,
+      "leads_to": "entrance_cam"
+    }
+  ],
+  "calibrated_at": "2026-08-05 09:20:00",
+  "coverage_area": [
+    [
+      80,
+      360
+    ],
+    [
+      600,
+      360
+    ],
+    [
+      600,
+      620
+    ],
+    [
+      80,
+      620
+    ]
+  ]
+}

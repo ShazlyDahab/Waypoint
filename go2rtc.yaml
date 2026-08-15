@@ -1,0 +1,8 @@
+streams:
+  entrance_cam: rtsp://demo:demo@192.168.1.50:554/stream1
+  checkout_cam: rtsp://demo:demo@192.168.1.51:554/stream1
+  backroom_cam: rtsp://admin:hunter2@192.168.1.60:554/Streaming/Channels/101
+api:
+  listen: 127.0.0.1:1984
+webrtc:
+  listen: :8555/tcp

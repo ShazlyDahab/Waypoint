@@ -1,0 +1,17 @@
+[
+  {
+    "id": "entrance_cam",
+    "name": "Front Entrance",
+    "rtsp_url": "rtsp://demo:demo@192.168.1.50:554/stream1"
+  },
+  {
+    "id": "checkout_cam",
+    "name": "Checkout Counter",
+    "rtsp_url": "rtsp://demo:demo@192.168.1.51:554/stream1"
+  },
+  {
+    "id": "backroom_cam",
+    "name": "Back Room",
+    "rtsp_url": "rtsp://admin:hunter2@192.168.1.60:554/Streaming/Channels/101"
+  }
+]

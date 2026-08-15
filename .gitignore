@@ -1,0 +1,23 @@
+# Secrets — never commit these
+.secrets/
+*.key
+
+# SQLite databases (local runtime state, not source)
+*.db
+*.db-wal
+*.db-shm
+
+# React webapp
+admin_portal/webapp/node_modules/
+admin_portal/webapp_dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime output
+logs/
+review_queue/
+floor_plan_uploads/
+bin/go2rtc

@@ -1,0 +1,15 @@
+{# Identity mark: a camera frame with a single filled position inside it.
+   That is the product in two primitives — a person's position within a
+   camera's own view — and it is the one idea the whole system is built on
+   (no floor plan, no world coordinates). Rectangle + circle, Bauhaus
+   geometry, legible down to 16px. #}
+{# Clicking the logo replays the splash: arm a flag, then let the link
+   navigate as usual. The splash then covers the ARRIVAL at home, rather
+   than playing here and dropping the user into a second page load. #}
+<a class="brand" href="/" onclick="try{sessionStorage.setItem('waypoint.splash.replay','1')}catch(e){}">
+  <svg class="mark" viewBox="0 0 24 20" width="22" height="18" aria-hidden="true" focusable="false">
+    <rect x="1" y="1" width="22" height="18" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="15.5" cy="12.5" r="3.4" fill="var(--accent)"/>
+  </svg>
+  <span class="wordmark">Waypoint</span>
+</a>

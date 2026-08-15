@@ -1,0 +1,495 @@
+/* Camera Ops portal — Modernist / International Typographic Style.
+   See DESIGN.md for the reasoning behind every token below.
+
+   Structure comes from typography, rules and whitespace. Not from boxes,
+   shadows or decorative color. Radius is 0 throughout on purpose. */
+
+:root {
+  /* Light on purpose, not by preference: this is read on a back-office
+     desktop under bright store lighting. No prefers-color-scheme flip. */
+  color-scheme: light;
+
+  --paper:      oklch(0.981 0.004 85);
+  --surface:    oklch(0.998 0.002 85);
+  --ink:        oklch(0.21 0.012 70);
+  --ink-muted:  oklch(0.50 0.010 75);
+  /* Tertiary CONTENT (eyebrows, column heads, legends). Must clear AA 4.5:1
+     on paper, so it cannot go lighter than this — an earlier 0.64 measured
+     3.18:1 and failed. --ink-disabled is the separate, exempt role. */
+  --ink-faint:    oklch(0.545 0.010 78);
+  --ink-disabled: oklch(0.68 0.008 78);
+  --rule:       oklch(0.885 0.005 80);
+
+  --accent:       oklch(0.47 0.19 264);
+  --accent-hover: oklch(0.39 0.19 264);
+  --accent-wash:  oklch(0.955 0.028 264);
+
+  /* Status. Always paired with a geometric mark and a text label —
+     never carried by colour alone (PRODUCT.md accessibility). */
+  --ok:     oklch(0.52 0.14 150);
+  --warn:   oklch(0.62 0.15 70);
+  --danger: oklch(0.52 0.19 27);
+
+  /* Charts are the subject, so they carry the accent. Grid is nearly
+     invisible so the data holds the contrast. */
+  --chart-series:      oklch(0.47 0.19 264);
+  --chart-area:        oklch(0.47 0.19 264 / 0.10);
+  --chart-grid:        oklch(0.925 0.004 82);
+  --chart-axis:        oklch(0.80 0.005 80);
+  --chart-axis-label:  oklch(0.50 0.010 75);
+
+  --heat-0: oklch(0.965 0.012 264);
+  --heat-1: oklch(0.876 0.056 264);
+  --heat-2: oklch(0.742 0.106 264);
+  --heat-3: oklch(0.585 0.163 264);
+  --heat-4: oklch(0.375 0.153 264);
+
+  --t-micro:   0.6875rem;
+  --t-small:   0.8125rem;
+  --t-body:    0.9375rem;
+  --t-lead:    1.0625rem;
+  --t-h3:      1.125rem;
+  --t-h2:      1.375rem;
+  --t-h1:      1.9375rem;
+  --t-display: 2.5rem;
+
+  --sans: "Helvetica Neue", Helvetica, Inter, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+
+
+  /* One control-height scale, shared by buttons, inputs and selects. Fixed
+     heights rather than padding alone: an <a class="btn"> and a
+     <button class="btn"> derive different heights from text metrics, which
+     put four different control heights on a single page before this. */
+  --control-h:    34px;
+  --control-h-sm: 26px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+.hidden { display: none; }
+
+/* Covers the page between HTML parse and the splash mounting, so home never
+   flashes first. Sits just under the splash's own z-index. */
+html.splash-pending::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  z-index: 9998;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numbers align in columns. This is a data product. */
+table, .kpi-value, .chart-svg, time, .num { font-variant-numeric: tabular-nums; }
+
+::selection { background: var(--accent-wash); }
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------ masthead --- */
+
+/* Shares the content column exactly: the brand and the page title below it
+   must sit on the same left edge, and the rule terminates with the column.
+   A full-bleed bar would break the grid the whole system is built on. */
+header.topbar {
+  display: flex;
+  align-items: baseline;
+  gap: 2rem;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 1.25rem 2rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+}
+
+header.topbar nav { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+header.topbar nav a {
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: var(--t-small);
+  padding-bottom: 0.2rem;
+  border-bottom: 2px solid transparent;
+  transition: color 140ms var(--ease), border-color 140ms var(--ease);
+}
+header.topbar nav a:hover { color: var(--ink); }
+header.topbar nav a.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+main { max-width: 1140px; margin: 0 auto; padding: 2.5rem 2rem 5rem; }
+
+/* --------------------------------------------------------------- brand --- */
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+.brand .mark { display: block; flex: none; }
+/* Uppercase and tracked, matching the splash exactly — the brief requires
+   the header lockup and the splash lockup to be the same lockup, and the
+   splash's resting tracking is LOCKUP.TRACKING_TO_EM (0.06em). */
+.brand .wordmark {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* "Admin" is a qualifier, not part of the name: same size, lighter weight,
+   separated by space rather than punctuation. */
+.brand .sub {
+  font-weight: 400;
+  color: var(--ink-muted);
+  margin-left: 0.4em;
+}
+
+/* ---------------------------------------------------------- typography --- */
+
+h1 {
+  font-size: var(--t-h1);
+  font-weight: 600;
+  letter-spacing: -0.021em;
+  margin: 0 0 0.75rem;
+  line-height: 1.15;
+}
+/* The heavy rule: the strongest structural mark in the system, and the
+   page's anchor. Every page title sits on one. */
+h1 + p, h1 + .muted { margin-top: 1rem; }
+h1 { padding-bottom: 0.875rem; border-bottom: 2px solid var(--ink); }
+
+h2 {
+  font-size: var(--t-h2);
+  font-weight: 600;
+  letter-spacing: -0.021em;
+  margin: 0 0 0.5rem;
+}
+h3 { font-size: var(--t-h3); font-weight: 600; letter-spacing: -0.015em; margin: 0 0 0.4rem; }
+
+p { max-width: 68ch; }
+.muted { color: var(--ink-muted); font-size: var(--t-small); }
+.eyebrow {
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { color: var(--accent-hover); }
+
+/* ------------------------------------------------------------- sections --- */
+/* Not cards. Rule-separated bands with generous air. */
+
+.panel {
+  border-top: 1px solid var(--rule);
+  padding: 1.75rem 0 0;
+  margin: 0 0 3.5rem;
+}
+.panel > :last-child { margin-bottom: 0; }
+
+.insight-section { margin-bottom: 3.5rem; }
+.insight-section h2 { margin-bottom: 0.25rem; }
+.insight-section h3 {
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+  font-weight: 600;
+  margin: 2rem 0 0.75rem;
+}
+
+/* ----------------------------------------------------------- range bar --- */
+
+.range-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+  row-gap: 0.75rem;
+  margin: 1.25rem 0 2rem;
+}
+.range-presets { display: flex; gap: 1.25rem; }
+.range-presets a {
+  font-size: var(--t-small);
+  text-decoration: none;
+  color: var(--ink-muted);
+  padding-bottom: 0.15rem;
+  border-bottom: 2px solid transparent;
+}
+.range-presets a:hover { color: var(--ink); }
+.range-presets a.active { color: var(--ink); border-bottom-color: var(--accent); }
+.range-form { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.range-form label { margin: 0; }
+.range-form input[type=date] {
+  height: var(--control-h-sm);
+  padding: 0 0.5rem;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--t-small);
+  border-radius: 0;
+  font-variant-numeric: tabular-nums;
+}
+.range-form input[type=date]:focus { border-color: var(--accent); }
+.range-clear { font-size: var(--t-small); }
+
+/* ---------------------------------------------------------------- KPIs --- */
+/* Newspaper band, rule-divided. Deliberately not a row of boxes. */
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 0;
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin: 0 0 3rem;
+}
+.kpi-tile {
+  padding: 1.125rem 1.5rem 1.25rem;
+  border-right: 1px solid var(--rule);
+}
+.kpi-tile:first-child { padding-left: 0; }
+.kpi-tile:last-child { border-right: 0; }
+.kpi-tile .kpi-label {
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+.kpi-tile .kpi-value {
+  font-size: var(--t-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-top: 0.5rem;
+}
+
+/* -------------------------------------------------------------- tables --- */
+
+table { width: 100%; border-collapse: collapse; }
+th, td {
+  text-align: left;
+  padding: 0.625rem 1rem 0.625rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--t-small);
+  vertical-align: baseline;
+}
+th {
+  color: var(--ink-faint);
+  font-weight: 600;
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  border-bottom-color: var(--ink);
+  padding-bottom: 0.5rem;
+}
+tr:hover td { background: var(--accent-wash); }
+
+/* ------------------------------------------------------------- controls --- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  padding: 0 0.9rem;
+  line-height: 1;
+  border-radius: 0;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: var(--t-small);
+  font-family: inherit;
+  text-decoration: none;
+  transition: background-color 140ms var(--ease), color 140ms var(--ease),
+              border-color 140ms var(--ease);
+}
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled, .btn[disabled] {
+  border-color: var(--rule);
+  color: var(--ink-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--surface); }
+.btn-danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.btn-danger:hover { background: var(--danger); color: var(--surface); }
+.btn-sm { height: var(--control-h-sm); padding: 0 0.6rem; font-size: var(--t-micro); }
+
+input[type=text], input[type=url], input[type=number], input[type=file], select, textarea {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 0.65rem;
+  border-radius: 0;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--t-body);
+  font-family: inherit;
+  transition: border-color 140ms var(--ease);
+}
+input:hover, select:hover, textarea:hover { border-color: var(--ink-faint); }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input::placeholder { color: var(--ink-disabled); }
+input[type=file] { height: auto; padding: 0.4rem 0.65rem; }
+textarea { height: auto; padding: 0.5rem 0.65rem; font-family: var(--mono); font-size: var(--t-small); line-height: 1.55; }
+
+label {
+  display: block;
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  color: var(--ink-faint);
+  margin: 1rem 0 0.3rem;
+}
+form.inline { display: inline; }
+.hint {
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  margin: 0 0 0.4rem;
+  max-width: 44ch;
+}
+.hint code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--accent-wash);
+  padding: 0.05em 0.3em;
+}
+
+.row { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; }
+.row > div { flex: 1; min-width: 165px; }
+
+/* -------------------------------------------------------------- status --- */
+/* Colour is never load-bearing: each badge carries a geometric mark via
+   ::before and its own text label. Distinguishable in greyscale and to
+   every form of colour blindness. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border-radius: 0;
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+}
+.badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  flex: none;
+}
+.badge-ok { color: var(--ok); }
+.badge-ok::before { border-radius: 50%; }                        /* circle  */
+.badge-warn { color: var(--warn); }
+.badge-warn::before { transform: rotate(45deg); }                /* diamond */
+.badge-danger { color: var(--danger); }                          /* square  */
+.badge-muted { color: var(--ink-faint); }
+.badge-muted::before {                                           /* hollow  */
+  background: transparent;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+/* Flash: full-width top rule, not a side stripe. */
+.flash {
+  padding: 0.75rem 1rem;
+  border-radius: 0;
+  border-top: 2px solid;
+  margin-bottom: 2rem;
+  font-size: var(--t-small);
+}
+.flash-ok { border-top-color: var(--ok); background: oklch(0.52 0.14 150 / 0.07); color: var(--ink); }
+.flash-error { border-top-color: var(--danger); background: oklch(0.52 0.19 27 / 0.07); color: var(--ink); }
+
+/* --------------------------------------------------------------- media --- */
+
+img.preview { max-width: 100%; border-radius: 0; border: 1px solid var(--rule); display: block; }
+canvas { border: 1px solid var(--rule); border-radius: 0; max-width: 100%; cursor: crosshair; }
+
+pre.log {
+  background: oklch(0.16 0.008 70);
+  color: oklch(0.86 0.008 85);
+  padding: 1rem 1.125rem;
+  border-radius: 0;
+  max-height: 380px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+@media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* -------------------------------------------------------------- charts --- */
+
+.chart-svg { display: block; width: 100%; height: auto; margin: 0.5rem 0; }
+.chart-bar { fill: var(--chart-series); transition: opacity 140ms var(--ease); }
+.chart-bar:hover { opacity: 0.72; }
+.chart-line { fill: none; stroke: var(--chart-series); stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+.chart-area { fill: var(--chart-area); stroke: none; }
+.chart-dot { fill: var(--chart-series); stroke: var(--paper); stroke-width: 2; }
+.chart-grid { stroke: var(--chart-grid); stroke-width: 1; }
+.chart-axis { stroke: var(--chart-axis); stroke-width: 1; }
+.chart-axis-label { fill: var(--chart-axis-label); font-size: 10px; font-variant-numeric: tabular-nums; }
+.chart-value-label { fill: var(--ink); font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.chart-table { margin-top: 0.75rem; font-size: var(--t-small); }
+.chart-table summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+}
+.chart-table summary:hover { color: var(--ink); }
+.chart-table table { margin-top: 0.75rem; }
+
+.heat-0 { fill: var(--heat-0); background: var(--heat-0); }
+.heat-1 { fill: var(--heat-1); background: var(--heat-1); }
+.heat-2 { fill: var(--heat-2); background: var(--heat-2); }
+.heat-3 { fill: var(--heat-3); background: var(--heat-3); }
+.heat-4 { fill: var(--heat-4); background: var(--heat-4); }
+.heat-cell { stroke: var(--paper); stroke-width: 1.5; transition: opacity 140ms var(--ease); }
+.heat-cell:hover { opacity: 0.72; }
+.heat-legend {
+  display: flex; align-items: center; gap: 0.35rem;
+  margin-top: 0.875rem; font-size: var(--t-micro);
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint);
+}
+.heat-legend .swatch { width: 15px; height: 15px; border-radius: 0; display: inline-block; }
+.heatmap-table th, .heatmap-table td { text-align: center; padding: 0.25rem 0.4rem; font-size: var(--t-micro); }
+.heatmap-table th:first-child, .heatmap-table td:first-child { text-align: left; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

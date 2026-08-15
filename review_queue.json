@@ -1,0 +1,22 @@
+[
+  {
+    "review_id": "review_1_demo",
+    "candidate_global_id": 214,
+    "provisional_global_id": 589,
+    "from_camera": "entrance_cam",
+    "to_camera": "checkout_cam",
+    "similarity_score": 0.69,
+    "new_crop": "review_queue/review_1_demo_new.png",
+    "resolved": true
+  },
+  {
+    "review_id": "review_2_demo",
+    "candidate_global_id": 340,
+    "provisional_global_id": 601,
+    "from_camera": "checkout_cam",
+    "to_camera": "entrance_cam",
+    "similarity_score": 0.61,
+    "new_crop": "review_queue/review_2_demo_new.png",
+    "resolved": true
+  }
+]

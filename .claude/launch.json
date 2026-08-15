@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin-portal",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "admin_portal.main"],
+      "port": 8800,
+      "autoPort": false
+    },
+    {
+      "name": "webapp-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "admin_portal/webapp", "run", "dev"],
+      "port": 5173,
+      "url": "http://localhost:5173/app/"
+    }
+  ]
+}

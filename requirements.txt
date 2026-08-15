@@ -1,0 +1,24 @@
+# Camera pipeline (calibrate_zones.py, multi_camera_dashboard.py, reid_registry.py)
+rfdetr
+supervision
+opencv-python
+numpy
+torch
+torchvision
+
+# Admin portal (admin_portal/)
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+Pillow
+
+# Floor plan / live view / discovery feature set (see admin_portal/webapp/
+# for the React frontend and its own package.json)
+cryptography       # Slice 7 — credential encryption at rest
+websockets         # Slice 6 — detection ingest WebSocket client
+httpx              # Slice 8 — discovery HTTP banner probes
+wsdiscovery        # Slice 8 — ONVIF WS-Discovery
+onvif-zeep         # Slice 8 — ONVIF GetDeviceInformation/GetStreamUri
+pypdfium2          # Slice 2 — PDF floor plan rasterization
+cairosvg           # Slice 2 — SVG floor plan rasterization

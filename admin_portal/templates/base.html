@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Waypoint{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="topbar">
+    {% include "_brand.html" %}
+    <nav>
+      <a href="/" class="{{ 'active' if active == 'home' else '' }}">Home</a>
+      <a href="/insights" class="{{ 'active' if active == 'insights' else '' }}">Insights</a>
+      <a href="/cameras" class="{{ 'active' if active == 'cameras' else '' }}">Cameras</a>
+      <a href="/app/cameras">Live Monitoring</a>
+      <a href="/reviews" class="{{ 'active' if active == 'reviews' else '' }}">Review Queue</a>
+      <a href="/jobs" class="{{ 'active' if active == 'jobs' else '' }}">Jobs</a>
+    </nav>
+  </header>
+  <main>
+    {% if request.query_params.get('ok') %}
+      <div class="flash flash-ok">{{ request.query_params.get('ok') }}</div>
+    {% endif %}
+    {% if request.query_params.get('error') %}
+      <div class="flash flash-error">{{ request.query_params.get('error') }}</div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

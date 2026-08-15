@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Cameras — Waypoint{% endblock %}
+{% block content %}
+<h1>Cameras</h1>
+<p class="muted">
+  Add, edit and remove the cameras this system watches.
+  <a href="/app/discovery">Find cameras on the network →</a> scans for them automatically
+  instead of typing IPs and RTSP URLs by hand.
+</p>
+
+<div class="panel">
+  <table>
+    <tr>
+      <th>ID</th><th>Name</th><th>RTSP URL</th><th>Calibration</th><th></th>
+    </tr>
+    {% for cam in cameras %}
+    <tr>
+      <td><strong>{{ cam.id }}</strong></td>
+      <td>{{ cam.name or '—' }}</td>
+      <td class="muted">{{ cam.rtsp_url }}</td>
+      <td>
+        {% if cam.id in calibrated_ids %}<span class="badge badge-ok">calibrated</span>
+        {% else %}<span class="badge badge-muted">none</span>{% endif %}
+      </td>
+      <td>
+        <a class="btn btn-sm" href="/cameras/{{ cam.id }}/zones">Handoffs</a>
+        <button class="btn btn-sm" type="button" onclick="document.getElementById('edit-{{ loop.index }}').classList.toggle('hidden')">Edit</button>
+        <form class="inline" method="post" action="/cameras/{{ cam.id }}/delete" onsubmit="return confirm('Remove camera {{ cam.id }} from cameras.json? This does not delete its calibration file.');">
+          <button class="btn btn-sm btn-danger" type="submit">Remove</button>
+        </form>
+      </td>
+    </tr>
+    <tr id="edit-{{ loop.index }}" class="hidden">
+      <td colspan="5">
+        <form method="post" action="/cameras/{{ cam.id }}/edit">
+          <div class="row">
+            <div><label>Name</label><input type="text" name="name" value="{{ cam.name or '' }}"></div>
+            <div><label>RTSP URL</label><input type="text" name="rtsp_url" value="{{ cam.rtsp_url }}" required></div>
+            <div><button class="btn btn-primary" type="submit">Save</button></div>
+          </div>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="muted">No cameras registered yet — add one below.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="panel">
+  <h2>Add a camera manually</h2>
+  <p class="muted">
+    Only needed if you already know the RTSP URL — otherwise
+    <a href="/app/discovery">scan the network</a> and add what it finds.
+  </p>
+  <form method="post" action="/cameras/add">
+    <div class="row">
+      <div>
+        <label>Camera ID</label>
+        <p class="hint">Permanent short name, no spaces. For example <code>entrance_cam</code>.</p>
+        <input type="text" name="id" required pattern="[a-zA-Z0-9_\-]+" title="letters, numbers, underscore, hyphen only">
+      </div>
+      <div>
+        <label>Display name (optional)</label>
+        <input type="text" name="name">
+      </div>
+      <div>
+        <label>RTSP URL</label>
+        <input type="text" name="rtsp_url" required placeholder="rtsp://user:pass@host:554/stream">
+      </div>
+      <div>
+        <button class="btn btn-primary" type="submit">Add camera</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
