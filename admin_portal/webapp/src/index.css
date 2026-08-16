@@ -99,6 +99,21 @@ a:hover { color: var(--accent-hover); }
 }
 .topbar a.back:hover { color: var(--ink); }
 
+/* Same top-level nav as the Jinja portal's header.topbar nav (see
+   admin_portal/static/style.css) — duplicated for the same reason the
+   tokens above are: this app builds independently. */
+.topbar nav.app-nav { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.topbar nav.app-nav a {
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: var(--t-small);
+  padding-bottom: 0.2rem;
+  border-bottom: 2px solid transparent;
+  transition: color 140ms var(--ease), border-color 140ms var(--ease);
+}
+.topbar nav.app-nav a:hover { color: var(--ink); }
+.topbar nav.app-nav a.active { color: var(--ink); border-bottom-color: var(--accent); }
+
 /* --------------------------------------------------------------- brand --- */
 
 .brand {
@@ -336,17 +351,6 @@ td { padding: 0.625rem 1rem 0.625rem 0; border-bottom: 1px solid var(--rule); fo
 }
 .canvas-note p { max-width: 90ch; margin: 0; }
 .canvas-note label { color: oklch(0.66 0.008 80); }
-
-.grid-wall { display: grid; gap: 1px; width: 100%; height: 100%; background: var(--canvas-rule); }
-.grid-tile { position: relative; overflow: hidden; background: var(--canvas); }
-.grid-tile .tile-label {
-  position: absolute; top: 0; left: 0; z-index: 1;
-  padding: 0.35rem 0.6rem;
-  background: oklch(0.16 0.008 70 / 0.82);
-  color: var(--canvas-ink);
-  font-size: var(--t-micro); font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.07em;
-}
 
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

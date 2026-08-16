@@ -25,8 +25,8 @@
       <td>
         <a class="btn btn-sm" href="/cameras/{{ cam.id }}/zones">Handoffs</a>
         <button class="btn btn-sm" type="button" onclick="document.getElementById('edit-{{ loop.index }}').classList.toggle('hidden')">Edit</button>
-        <form class="inline" method="post" action="/cameras/{{ cam.id }}/delete" onsubmit="return confirm('Remove camera {{ cam.id }} from cameras.json? This does not delete its calibration file.');">
-          <button class="btn btn-sm btn-danger" type="submit">Remove</button>
+        <form class="inline" method="post" action="/cameras/{{ cam.id }}/delete">
+          <button class="btn btn-sm btn-danger" type="submit" onclick="return armConfirm(this, event)">Remove</button>
         </form>
       </td>
     </tr>
@@ -74,4 +74,29 @@
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Two-click confirm instead of window.confirm() — native dialogs get
+  // silently blocked in some browser contexts (embedded webviews, and after
+  // a browser auto-suppresses repeat page dialogs), which made this button
+  // look like it was doing nothing. First click arms it and re-labels it;
+  // the same click handler lets the second click through to submit.
+  function armConfirm(btn, event) {
+    if (btn.dataset.armed === '1') {
+      return true;
+    }
+    event.preventDefault();
+    btn.dataset.armed = '1';
+    const original = btn.textContent;
+    btn.textContent = 'Click again to confirm';
+    clearTimeout(btn._revertTimer);
+    btn._revertTimer = setTimeout(() => {
+      btn.dataset.armed = '0';
+      btn.textContent = original;
+    }, 3000);
+    return false;
+  }
+</script>
 {% endblock %}

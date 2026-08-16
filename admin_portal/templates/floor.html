@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}On the Floor — Waypoint{% endblock %}
+{% block content %}
+<h1>On the floor</h1>
+<p class="muted">The phone view is a glance, not a workspace: today's numbers and which cameras
+are reporting. Everything else stays on the desktop portal.</p>
+
+<div class="floor-grid">
+  <div class="floor-card">
+    <div class="floor-card-head">
+      {% include "_brand.html" %}
+      <span class="eyebrow">Today</span>
+    </div>
+
+    <div class="floor-stat">
+      <div class="eyebrow">In store now</div>
+      <div class="floor-big">{{ in_store_now }}</div>
+      <div class="muted">across {{ reporting_count }} reporting camera{{ 's' if reporting_count != 1 else '' }}</div>
+    </div>
+
+    <div class="floor-stat">
+      <div class="eyebrow">Entries today</div>
+      <div class="floor-big">{{ "{:,}".format(entries_today) }}</div>
+      <div class="muted">
+        {% if pct_change is not none %}
+          {{ 'up' if pct_change >= 0 else 'down' }} {{ pct_change|abs }}% on last {{ compare_weekday }}
+        {% else %}
+          no data for last {{ compare_weekday }} yet
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="floor-stat">
+      <div class="eyebrow">Avg wait at checkout</div>
+      <div class="floor-big">
+        {% if avg_wait_seconds %}{{ (avg_wait_seconds // 60)|int }}m {{ (avg_wait_seconds % 60)|round|int }}s{% else %}<span class="value-empty">—</span>{% endif %}
+      </div>
+      <div class="muted">
+        {% if slowest_point %}{{ slowest_point.point_name }} is the slow one{% else %}no service points timed yet today{% endif %}
+      </div>
+    </div>
+
+    <div class="floor-stat">
+      <div class="eyebrow">Busiest hour so far</div>
+      <div class="floor-big">{% if busiest_today %}{{ "%02d:00"|format(busiest_today[0]) }}{% else %}<span class="value-empty">—</span>{% endif %}</div>
+      <div class="muted">{% if busiest_today %}{{ busiest_today[1] }} entries{% else %}no entries yet today{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="floor-card">
+    <div class="floor-card-head">
+      <h2>Cameras</h2>
+      <span class="eyebrow" id="floorLiveCount">– live</span>
+    </div>
+
+    {% for cam in cameras %}
+    <div class="floor-cam-row" data-camera-id="{{ cam.id }}">
+      <div class="floor-cam-thumb">
+        <img src="/api/analytics/cameras/{{ cam.id }}/reference-frame" alt=""
+             onerror="this.style.visibility='hidden'">
+      </div>
+      <div class="floor-cam-meta">
+        <div class="floor-cam-name">{{ cam.name or cam.id }}</div>
+        <span class="badge badge-muted" data-status-badge>Not set up</span>
+      </div>
+      <div class="floor-cam-count muted" data-status-count>—</div>
+    </div>
+    {% else %}
+    <p class="muted">No cameras registered yet. Add one under <a href="/cameras">Cameras</a>.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if cameras %}
+<script>
+(function(){
+  // Same live-status contract the React app uses (/ws/status), and the
+  // exact same badge vocabulary the rest of the portal already renders
+  // camera state with (see cameras.html) — this page just listens instead
+  // of polling, so it stays a plain server-rendered page with no build step.
+  var STATE_LABEL = {online:"Live", offline:"Offline", degraded:"Degraded", not_configured:"Not set up"};
+  var STATE_BADGE = {online:"badge-ok", offline:"badge-danger", degraded:"badge-warn", not_configured:"badge-muted"};
+
+  var rows = {};
+  document.querySelectorAll(".floor-cam-row").forEach(function(el){
+    rows[el.dataset.cameraId] = { el: el, state: "not_configured" };
+  });
+
+  function updateLiveCount(){
+    var live = 0;
+    Object.keys(rows).forEach(function(id){ if(rows[id].state === "online") live++; });
+    document.getElementById("floorLiveCount").textContent = live + " live";
+  }
+  updateLiveCount();
+
+  var proto = location.protocol === "https:" ? "wss:" : "ws:";
+  var ws;
+  try {
+    ws = new WebSocket(proto + "//" + location.host + "/ws/status");
+  } catch (e) {
+    return; // no live socket available — the page still works, just static
+  }
+  ws.onmessage = function(ev){
+    var msg;
+    try { msg = JSON.parse(ev.data); } catch (e) { return; }
+    if (msg.type !== "status" || !msg.camera_id) return;
+    var row = rows[msg.camera_id];
+    if (!row) return;
+    var state = msg.connection_state || "not_configured";
+    row.state = state;
+    var badge = row.el.querySelector("[data-status-badge]");
+    badge.className = "badge " + (STATE_BADGE[state] || "badge-muted");
+    badge.textContent = STATE_LABEL[state] || state;
+    var count = row.el.querySelector("[data-status-count]");
+    count.textContent = (state === "online")
+      ? msg.person_count + (msg.person_count === 1 ? " person" : " people")
+      : "—";
+    updateLiveCount();
+  };
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time Orb — 2026</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{
+    --ink:#e9edf5; --dim:#8992a6; --faint:#525a6e;
+    --panel-bg: rgba(10,12,20,0.62);
+    --accent: hsl(210,70%,62%);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:#040407;overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink);}
+  canvas{position:fixed;inset:0;display:block;}
+
+  #hud{position:fixed;inset:0;z-index:10;pointer-events:none;}
+
+  /* Everything floats directly on the canvas — no cards, no borders, no
+     blur. That's a deliberate departure from the bordered-panel HUD this
+     started with: matches the reference exactly, and reads cleaner against
+     a scene that's already visually busy. */
+  #topLeft{position:absolute;top:1.4rem;left:1.4rem;max-width:300px;}
+  #breadcrumb{font-size:1.05rem;font-weight:600;letter-spacing:-0.01em;color:var(--ink);}
+  #breadcrumb .crumb{cursor:default;}
+  #breadcrumb .crumb.link{cursor:pointer;color:var(--dim);pointer-events:auto;}
+  #breadcrumb .crumb.link:hover{color:var(--accent);}
+  #breadcrumb .sep{color:var(--faint);margin:0 0.35rem;font-weight:400;}
+
+  #entriesLine{margin-top:0.9rem;font-size:1.85rem;font-weight:700;letter-spacing:-0.01em;
+    font-variant-numeric:tabular-nums;color:#fff;}
+  #entriesLine .unit{font-size:1.05rem;font-weight:400;color:var(--dim);margin-left:0.35rem;}
+
+  #statList{margin-top:1rem;font-size:0.82rem;}
+  #statList .stat-row{display:flex;justify-content:space-between;gap:1.5rem;padding:0.24rem 0;
+    border-bottom:1px solid rgba(255,255,255,0.07);}
+  #statList .stat-row:last-child{border-bottom:none;}
+  #statList .k{color:var(--dim);}
+  #statList .v{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);}
+
+  /* "the button below" — only appears once there's somewhere to go back to;
+     hidden entirely at year level rather than shown disabled. */
+  #zoomOutLink{display:none;margin-top:0.9rem;cursor:pointer;pointer-events:auto;
+    font-size:0.78rem;color:var(--dim);letter-spacing:0.01em;}
+  #zoomOutLink:hover{color:var(--accent);}
+  #zoomOutLink.visible{display:inline-block;}
+
+  #instructions{position:absolute;top:1.4rem;right:1.4rem;max-width:260px;
+    font-size:0.82rem;line-height:1.55;color:var(--dim);text-align:right;}
+
+  #legendWrap{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);
+    display:flex;flex-wrap:wrap;justify-content:center;gap:0.35rem 1.1rem;max-width:640px;
+    pointer-events:auto;}
+  .swatch-item{display:flex;align-items:center;gap:0.4rem;cursor:pointer;}
+  .swatch-item.future{opacity:0.32;filter:grayscale(50%);cursor:default;}
+  .swatch-dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .swatch-item span{font-size:0.76rem;color:var(--dim);}
+  .swatch-item:hover:not(.future) span{color:var(--ink);}
+  .swatch-item.active span{color:var(--ink);font-weight:600;}
+
+  #cornerLabel{position:absolute;bottom:1.2rem;right:1.4rem;font-size:0.66rem;
+    letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);}
+
+  /* Only shown when this page is NOT the Insights iframe (see the
+     window.top check in the init script below) — full-screen opens this
+     page in its own tab with no browser chrome of its own, so without this
+     there was no way back to Insights short of closing the tab. */
+  #backLink{position:absolute;bottom:1.2rem;left:1.4rem;font-size:0.78rem;
+    color:var(--dim);text-decoration:none;letter-spacing:0.01em;
+    pointer-events:auto;display:none;}
+  #backLink:hover{color:var(--accent);}
+  #backLink.visible{display:inline-block;}
+
+  /* Also used embedded in a narrower iframe (Insights page), not just a
+     full browser window — degrade the least essential text first. */
+  @media (max-width: 640px){
+    #instructions{display:none;}
+    #legendWrap{max-width:88%;}
+    #cornerLabel{display:none;}
+  }
+
+  #tooltip{position:fixed;z-index:20;pointer-events:none;
+    background:rgba(8,10,16,0.92);border:1px solid rgba(255,255,255,0.12);
+    padding:0.35rem 0.6rem;font-size:0.76rem;border-radius:2px;display:none;
+    white-space:nowrap;}
+  #tooltip .tt-sub{color:var(--dim);font-size:0.68rem;margin-top:0.1rem;}
+
+  #loadErr{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:#040407;color:#e9edf5;font-size:0.9rem;padding:2rem;text-align:center;z-index:30;}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="hud">
+  <div id="topLeft">
+    <div id="breadcrumb"></div>
+    <div id="entriesLine"><span id="stEntries">–</span><span class="unit">people in</span></div>
+    <div id="statList">
+      <div class="stat-row"><span class="k">People out</span><span class="v" id="stPeopleOut">–</span></div>
+      <div class="stat-row"><span class="k">Time spent inside</span><span class="v" id="stTimeSpent">–</span></div>
+      <div class="stat-row"><span class="k">Busiest hour</span><span class="v" id="stBusiestHour">–</span></div>
+      <div class="stat-row"><span class="k">Year elapsed</span><span class="v" id="stYearPct">–</span></div>
+      <div class="stat-row"><span class="k">Days remaining</span><span class="v" id="stDaysLeft">–</span></div>
+      <div class="stat-row"><span class="k">Weeks so far</span><span class="v" id="stWeeks">–</span></div>
+    </div>
+    <div id="zoomOutLink">← Zoom out</div>
+  </div>
+
+  <div id="instructions">Click a sphere to open it. Click empty space, or the button below, to zoom back out.</div>
+
+  <div id="legendWrap"></div>
+  <a id="backLink" href="/insights">← Back to Insights</a>
+  <div id="cornerLabel">2026 · A living calendar</div>
+</div>
+
+<div id="tooltip"></div>
+<div id="loadErr">Time Orb couldn't load Three.js from the CDN. Check your internet connection and reload.</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================ data model
+   Real 2026 calendar structure. "Weeks" here are NOT ISO calendar weeks —
+   per spec they are simple ceil(daysInMonth/7) chunks of the month (day
+   1-7 = week 1, 8-14 = week 2, ...), which keeps every week's particles
+   trivially addressable as (dayNumber-1) % 7 with no sorting/grouping
+   pass needed anywhere in the layout code below. */
+const YEAR = 2026;
+const TODAY = new Date(); // real now — a day only counts as "existing" once it's actually happened
+const MONTH_NAMES = ["January","February","March","April","May","June","July",
+  "August","September","October","November","December"];
+const WEEKDAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+
+const monthsMeta = []; // {daysInMonth, weeksInMonth, weekStartGlobalIndex}
+{
+  let weekCursor = 0;
+  for(let m=0;m<12;m++){
+    const dim = daysInMonth(YEAR,m);
+    const wim = Math.ceil(dim/7);
+    monthsMeta.push({ daysInMonth:dim, weeksInMonth:wim, weekStartGlobalIndex:weekCursor });
+    weekCursor += wim;
+  }
+}
+
+const days = []; // flat, index = day-of-year (0-based), the ONE array of record
+for(let m=0;m<12;m++){
+  const dim = monthsMeta[m].daysInMonth;
+  for(let d=1; d<=dim; d++){
+    const dateObj = new Date(YEAR,m,d);
+    const weekInMonth = Math.floor((d-1)/7) + 1; // 1-based
+    const weekGlobalIndex = monthsMeta[m].weekStartGlobalIndex + (weekInMonth-1);
+    const dayOfWeek = dateObj.getDay();
+    const dayOfYear = days.length;
+    // entries/peopleOut/avgTime/hourCounts start at zero and are filled in
+    // by loadRealMetrics() below — real store_metrics.db history, not a
+    // synthetic placeholder. A day with no logged activity yet just stays
+    // at zero rather than inventing a number for it.
+    days.push({
+      month:m, dayNumber:d, dayOfWeek, weekInMonth, weekGlobalIndex, dayOfYear,
+      exists: dateObj <= TODAY,
+      entries: 0, peopleOut: 0, avgTime: 0, hourCounts: new Array(24).fill(0),
+    });
+  }
+}
+
+function isoDate(y, m0, d){
+  return `${y}-${String(m0+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+// GET /api/analytics/orb — one request for the whole year (admin_portal/api/
+// analytics.py, backed by metrics_store.daily_visitor_metrics). Positions/
+// sizes/alphas never depend on these values, only the HUD numbers do, so
+// patching them in after init() just means the counters update in place —
+// no re-layout needed.
+function loadRealMetrics(){
+  fetch(`/api/analytics/orb?year=${YEAR}`)
+    .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+    .then(data => {
+      const byDay = new Map((data.days || []).map(row => [row.day, row]));
+      for(const d of days){
+        const row = byDay.get(isoDate(YEAR, d.month, d.dayNumber));
+        if(!row) continue;
+        d.entries = row.entries;
+        d.peopleOut = row.exits;
+        d.avgTime = row.avg_visit_seconds / 60; // API is seconds; HUD displays minutes
+        d.hourCounts = row.hour_counts;
+      }
+      updateUIForLevel();
+    })
+    .catch(err => {
+      console.error('Time Orb: could not load /api/analytics/orb, showing zeros', err);
+    });
+}
+const N = days.length; // 365 (2026 is not a leap year)
+const EXISTING = days.filter(d=>d.exists);
+const YEAR_ELAPSED_PCT = Math.round(EXISTING.length / N * 100);
+const DAYS_REMAINING = N - EXISTING.length;
+const DISTINCT_WEEKS_ELAPSED = new Set(EXISTING.map(d=>d.weekGlobalIndex)).size;
+const monthActive = Array.from({length:12}, (_,m)=> days.some(d=>d.month===m && d.exists));
+
+/* ==================================================================
+   layout geometry — one persistent particle set, only positions move.
+   ================================================================== */
+const R_YEAR = 40, R_MONTH_CENTERS = 58, R_MONTH_CLUSTER = 7.5,
+      R_WEEK_CENTERS = 19, R_WEEK_CLUSTER = 3.4, R_DAY_RING = 10.5,
+      R_BG_SHELL = 125;
+const SIZE_YEAR = 5.0, SIZE_MONTHS = 5.5, SIZE_WEEKS = 7.0, SIZE_DAYS = 12.0, SIZE_BG = 2.0;
+const DIM_ALPHA = 0.16;
+const DRIFT_AMT = 0.55;
+
+function fibSpherePoint(i, n, R){
+  if(n < 1) n = 1;
+  const phi = Math.acos(1 - 2*(i+0.5)/n);
+  const theta = Math.PI*(1+Math.sqrt(5))*(i+0.5);
+  return {
+    x: R*Math.sin(phi)*Math.cos(theta),
+    y: R*Math.sin(phi)*Math.sin(theta),
+    z: R*Math.cos(phi),
+  };
+}
+
+// Static layouts: computed once, never depend on drill selection.
+const yearPos = days.map((d,i)=> fibSpherePoint(i, N, R_YEAR));
+const monthsPos = days.map(d=>{
+  const c = fibSpherePoint(d.month, 12, R_MONTH_CENTERS);
+  const l = fibSpherePoint(d.dayNumber-1, monthsMeta[d.month].daysInMonth, R_MONTH_CLUSTER);
+  return { x:c.x+l.x, y:c.y+l.y, z:c.z+l.z };
+});
+// The distant "everything else" shell used at weeks/days levels: same
+// angular arrangement as the months view, just pushed further out — so
+// backgrounded months don't jumble relative to each other between levels.
+const bgPos = monthsPos.map(p=>{
+  const len = Math.hypot(p.x,p.y,p.z) || 1;
+  const s = R_BG_SHELL/len;
+  return { x:p.x*s, y:p.y*s, z:p.z*s };
+});
+
+function weeksLevelPos(d, selMonth){
+  if(d.month !== selMonth) return bgPos[d.dayOfYear];
+  const wim = monthsMeta[d.month].weeksInMonth;
+  const wc = fibSpherePoint(d.weekInMonth-1, wim, R_WEEK_CENTERS);
+  const idxInWeek = (d.dayNumber-1) % 7;
+  const countInWeek = Math.min(7, monthsMeta[d.month].daysInMonth - (d.weekInMonth-1)*7);
+  const a = countInWeek>0 ? (idxInWeek/countInWeek)*Math.PI*2 : 0;
+  return {
+    x: wc.x + R_WEEK_CLUSTER*Math.cos(a),
+    y: wc.y + R_WEEK_CLUSTER*0.35*Math.sin(a*3),
+    z: wc.z + R_WEEK_CLUSTER*Math.sin(a),
+  };
+}
+function daysLevelPos(d, selMonth, selWeek){
+  if(!(d.month===selMonth && d.weekInMonth===selWeek)) return bgPos[d.dayOfYear];
+  const idxInWeek = (d.dayNumber-1) % 7;
+  const countInWeek = Math.min(7, monthsMeta[d.month].daysInMonth - (selWeek-1)*7);
+  const a = countInWeek>0 ? (idxInWeek/countInWeek)*Math.PI*2 : 0;
+  return {
+    x: R_DAY_RING*Math.cos(a),
+    y: R_DAY_RING*0.25*Math.sin(a*2),
+    z: R_DAY_RING*Math.sin(a),
+  };
+}
+
+function targetSize(lvl, sel, d){
+  if(!d.exists) return 0;
+  if(lvl==='year') return SIZE_YEAR;
+  if(lvl==='months') return SIZE_MONTHS;
+  if(lvl==='weeks') return d.month===sel.month ? SIZE_WEEKS : SIZE_BG;
+  return (d.month===sel.month && d.weekInMonth===sel.week) ? SIZE_DAYS : SIZE_BG;
+}
+function targetAlpha(lvl, sel, d){
+  if(!d.exists) return 0;
+  if(lvl==='year' || lvl==='months') return 1.0;
+  if(lvl==='weeks') return d.month===sel.month ? 1.0 : DIM_ALPHA;
+  return (d.month===sel.month && d.weekInMonth===sel.week) ? 1.0 : DIM_ALPHA;
+}
+function targetPos(lvl, sel, d){
+  if(lvl==='year') return yearPos[d.dayOfYear];
+  if(lvl==='months') return monthsPos[d.dayOfYear];
+  if(lvl==='weeks') return weeksLevelPos(d, sel.month);
+  return daysLevelPos(d, sel.month, sel.week);
+}
+
+// Month palette (year/months levels) vs. a separate week palette (weeks/days
+// levels) — golden-angle spacing keeps up to 5 weeks visually distinct from
+// each other without colliding with the month hues.
+function monthColorRGB(m){
+  const c = new THREE.Color().setHSL(m/12, 0.68, 0.56);
+  return [c.r, c.g, c.b];
+}
+function weekColorRGB(weekIdx0, weeksInMonth){
+  const hue = (0.37 + weekIdx0*0.6180339887) % 1;
+  const c = new THREE.Color().setHSL(hue, 0.75, 0.6);
+  return [c.r, c.g, c.b];
+}
+function targetColor(lvl, sel, d){
+  if(lvl==='weeks' || lvl==='days'){
+    if(d.month===sel.month) return weekColorRGB(d.weekInMonth-1, monthsMeta[d.month].weeksInMonth);
+  }
+  return monthColorRGB(d.month);
+}
+
+function computeTargets(lvl, sel, outPos, outSize, outAlpha, outColor){
+  for(let i=0;i<N;i++){
+    const d = days[i];
+    const p = targetPos(lvl, sel, d);
+    outPos[i*3]=p.x; outPos[i*3+1]=p.y; outPos[i*3+2]=p.z;
+    outSize[i] = targetSize(lvl, sel, d);
+    outAlpha[i] = targetAlpha(lvl, sel, d);
+    const col = targetColor(lvl, sel, d);
+    outColor[i*3]=col[0]; outColor[i*3+1]=col[1]; outColor[i*3+2]=col[2];
+  }
+}
+
+/* ============================================================ three.js */
+let renderer, scene, camera, controls, clock;
+let pointsObj, posAttr, sizeAttr, alphaAttr, colorAttr;
+let dust;
+
+const raycaster = new THREE.Raycaster();
+raycaster.params.Points.threshold = 3;
+const pointerNDC = new THREE.Vector2();
+
+const posFrom = new Float32Array(N*3), posTo = new Float32Array(N*3);
+const sizeFrom = new Float32Array(N), sizeTo = new Float32Array(N);
+const alphaFrom = new Float32Array(N), alphaTo = new Float32Array(N);
+const colorFrom = new Float32Array(N*3), colorTo = new Float32Array(N*3);
+const posCurBase = new Float32Array(N*3);
+const sizeCurBase = new Float32Array(N);
+const alphaCurBase = new Float32Array(N);
+const colorCurBase = new Float32Array(N*3);
+
+let level = 'year';
+let sel = { month:null, week:null };
+let transitioning = false, tStart = 0, tDuration = 1100;
+let cameraTween = null;
+
+const LEVELS = ['year','months','weeks','days'];
+function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+
+function startTransition(newLevel, newSel, deeper){
+  posFrom.set(posCurBase); sizeFrom.set(sizeCurBase); alphaFrom.set(alphaCurBase); colorFrom.set(colorCurBase);
+  computeTargets(newLevel, newSel, posTo, sizeTo, alphaTo, colorTo);
+  tStart = performance.now(); tDuration = 1100; transitioning = true;
+  level = newLevel; sel = newSel;
+  updateUIForLevel();
+
+  // Camera dolly: relative to whatever distance the user is CURRENTLY at
+  // (never an absolute value, so it never fights manual zoom), along the
+  // SAME direction they're already looking from (orbit angle untouched).
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const startDist = controls.getDistance();
+  const factor = deeper ? 0.62 : (1/0.62);
+  const endDist = THREE.MathUtils.clamp(startDist*factor, controls.minDistance, controls.maxDistance);
+  cameraTween = { dir, startDist, endDist, tStart, tDuration };
+}
+
+function zoomOut(){
+  const idx = LEVELS.indexOf(level);
+  if(idx<=0) return;
+  const newLevel = LEVELS[idx-1];
+  const newSel = { month:sel.month, week:sel.week };
+  if(newLevel==='weeks') newSel.week = null;
+  if(newLevel==='months'){ newSel.month=null; newSel.week=null; }
+  if(newLevel==='year'){ newSel.month=null; newSel.week=null; }
+  startTransition(newLevel, newSel, false);
+}
+function jumpToYear(){
+  if(level==='year') return;
+  startTransition('year', {month:null,week:null}, false);
+}
+function jumpToMonth(m){
+  if(!monthActive[m]) return;
+  startTransition('weeks', {month:m, week:null}, true);
+}
+function jumpToWeek(m, w){
+  const hasExisting = days.some(d=>d.month===m && d.weekInMonth===w && d.exists);
+  if(!hasExisting) return;
+  startTransition('days', {month:m, week:w}, true);
+}
+
+function pickDay(clientX, clientY){
+  pointerNDC.x = (clientX/window.innerWidth)*2 - 1;
+  pointerNDC.y = -(clientY/window.innerHeight)*2 + 1;
+  raycaster.setFromCamera(pointerNDC, camera);
+  const hits = raycaster.intersectObject(pointsObj, false);
+  for(const h of hits){
+    const d = days[h.index];
+    if(!d.exists) continue;
+    if(level==='weeks' && d.month!==sel.month) continue;
+    if(level==='days' && !(d.month===sel.month && d.weekInMonth===sel.week)) continue;
+    return d;
+  }
+  return null;
+}
+
+function tooltipLabel(d){
+  if(level==='year' || level==='months'){
+    return { main: MONTH_NAMES[d.month], sub: `2026` };
+  }
+  if(level==='weeks'){
+    return { main: `${MONTH_NAMES[d.month]} · Week ${d.weekInMonth}`, sub: `${monthsMeta[d.month].weeksInMonth} weeks this month` };
+  }
+  return { main: `${MONTH_NAMES[d.month]} ${d.dayNumber}, 2026`, sub: `${WEEKDAY_NAMES[d.dayOfWeek]} · ${d.entries} entries` };
+}
+
+/* ================================================================ init */
+function init(){
+  // Only show the way back to Insights when this page IS the full-screen
+  // tab — inside the Insights iframe itself, a link back to the page
+  // already showing it would be pointless.
+  if(window.top === window.self){
+    document.getElementById('backLink').classList.add('visible');
+  }
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x040407);
+  scene.fog = new THREE.FogExp2(0x040407, 0.0036);
+
+  camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 1000);
+  camera.position.set(0, 34, 150);
+
+  renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0,0,0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.enablePan = false; // keeps target permanently at the origin — every
+                               // layout above assumes that, and panning would break it
+  controls.minDistance = 16;
+  controls.maxDistance = 230;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.4;
+  controls.update();
+
+  clock = new THREE.Clock();
+
+  // ---- particle geometry -------------------------------------------
+  const geometry = new THREE.BufferGeometry();
+  posAttr = new THREE.BufferAttribute(new Float32Array(N*3), 3);
+  sizeAttr = new THREE.BufferAttribute(new Float32Array(N), 1);
+  alphaAttr = new THREE.BufferAttribute(new Float32Array(N), 1);
+  colorAttr = new THREE.BufferAttribute(new Float32Array(N*3), 3);
+  geometry.setAttribute('position', posAttr);
+  geometry.setAttribute('aSize', sizeAttr);
+  geometry.setAttribute('aAlpha', alphaAttr);
+  geometry.setAttribute('aColor', colorAttr);
+
+  const material = new THREE.ShaderMaterial({
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    vertexShader:`
+      attribute float aSize;
+      attribute float aAlpha;
+      attribute vec3 aColor;
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main(){
+        vColor = aColor;
+        vAlpha = aAlpha;
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        float s = aSize * (340.0 / max(-mvPosition.z, 0.001));
+        gl_PointSize = clamp(s, 1.0, 60.0);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader:`
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main(){
+        if(vAlpha <= 0.001) discard;
+        vec2 uv = gl_PointCoord - vec2(0.5);
+        float d = length(uv);
+        float glow = smoothstep(0.5, 0.0, d);
+        gl_FragColor = vec4(vColor * glow, glow * vAlpha);
+      }
+    `,
+  });
+  pointsObj = new THREE.Points(geometry, material);
+  scene.add(pointsObj);
+
+  // ---- dust backdrop (separate, decorative, non-interactive) --------
+  const DUST_N = 2200;
+  const dustGeo = new THREE.BufferGeometry();
+  const dustPos = new Float32Array(DUST_N*3);
+  for(let i=0;i<DUST_N;i++){
+    const r = 90 + Math.random()*260;
+    const theta = Math.random()*Math.PI*2;
+    const phi = Math.acos(2*Math.random()-1);
+    dustPos[i*3]   = r*Math.sin(phi)*Math.cos(theta);
+    dustPos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+    dustPos[i*3+2] = r*Math.cos(phi);
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos,3));
+  dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+    color:0x445566, size:1.1, sizeAttenuation:true,
+    transparent:true, opacity:0.32, depthWrite:false,
+  }));
+  scene.add(dust);
+
+  // initial (year-level) settled state — no transition-from-nothing needed
+  computeTargets('year', sel, posCurBase, sizeCurBase, alphaCurBase, colorCurBase);
+
+  updateUIForLevel();
+  wireEvents();
+  requestAnimationFrame(animate);
+}
+
+/* =============================================================== ui */
+function buildMonthLegend(wrap){
+  for(let m=0;m<12;m++){
+    const item = document.createElement('div');
+    item.className = 'swatch-item' + (monthActive[m] ? '' : ' future');
+    const dot = document.createElement('span');
+    dot.className = 'swatch-dot';
+    const [r,g,b] = monthColorRGB(m);
+    dot.style.background = `#${new THREE.Color(r,g,b).getHexString()}`;
+    const label = document.createElement('span');
+    label.textContent = MONTH_NAMES[m].slice(0,3);
+    item.appendChild(dot);
+    item.appendChild(label);
+    item.title = MONTH_NAMES[m];
+    if(monthActive[m]) item.addEventListener('click', ()=> jumpToMonth(m));
+    wrap.appendChild(item);
+  }
+}
+// Shown once you're inside a month (weeks/days levels) so each week's
+// cluster reads as its own color instead of all sharing the month hue.
+function buildWeekLegend(wrap, month){
+  const wim = monthsMeta[month].weeksInMonth;
+  for(let w=1; w<=wim; w++){
+    const hasExisting = days.some(d=>d.month===month && d.weekInMonth===w && d.exists);
+    const item = document.createElement('div');
+    item.className = 'swatch-item' + (hasExisting ? '' : ' future') + (level==='days' && sel.week===w ? ' active' : '');
+    const dot = document.createElement('span');
+    dot.className = 'swatch-dot';
+    const [r,g,b] = weekColorRGB(w-1, wim);
+    dot.style.background = `#${new THREE.Color(r,g,b).getHexString()}`;
+    const label = document.createElement('span');
+    label.textContent = `Week ${w}`;
+    item.appendChild(dot);
+    item.appendChild(label);
+    item.title = `Week ${w} of ${MONTH_NAMES[month]}`;
+    if(hasExisting) item.addEventListener('click', ()=> jumpToWeek(month, w));
+    wrap.appendChild(item);
+  }
+}
+function updateLegend(){
+  const wrap = document.getElementById('legendWrap');
+  wrap.innerHTML = '';
+  if(level==='weeks' || level==='days') buildWeekLegend(wrap, sel.month);
+  else buildMonthLegend(wrap);
+}
+
+function updateUIForLevel(){
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = '';
+  const addCrumb = (text, clickable, onClick) => {
+    const s = document.createElement('span');
+    s.className = 'crumb' + (clickable?' link':'');
+    s.textContent = text;
+    if(clickable) s.addEventListener('click', onClick);
+    bc.appendChild(s);
+  };
+  addCrumb('2026', level!=='year', jumpToYear);
+  if(level==='months'){
+    bc.appendChild(sepEl()); addCrumb('Months', false);
+  } else if(level==='weeks'){
+    bc.appendChild(sepEl()); addCrumb(MONTH_NAMES[sel.month], false);
+  } else if(level==='days'){
+    bc.appendChild(sepEl()); addCrumb(MONTH_NAMES[sel.month], true, ()=> startTransition('weeks', {month:sel.month, week:null}, false));
+    bc.appendChild(sepEl()); addCrumb(`Week ${sel.week}`, false);
+  }
+
+  document.getElementById('zoomOutLink').classList.toggle('visible', level!=='year');
+  document.getElementById('stYearPct').textContent = YEAR_ELAPSED_PCT + '%';
+  document.getElementById('stDaysLeft').textContent = DAYS_REMAINING;
+
+  const stats = currentViewStats();
+  document.getElementById('stEntries').textContent = stats.entries.toLocaleString();
+  document.getElementById('stWeeks').textContent = stats.weeks;
+  document.getElementById('stPeopleOut').textContent = stats.peopleOut.toLocaleString();
+  document.getElementById('stTimeSpent').textContent = stats.avgTime.toFixed(1) + ' min';
+  document.getElementById('stBusiestHour').textContent = String(stats.busiestHour).padStart(2,'0') + ':00';
+
+  updateLegend();
+}
+function sepEl(){ const s=document.createElement('span'); s.className='sep'; s.textContent='›'; return s; }
+
+// Sums People In/Out and time-weights the average time spent across the
+// given days, then finds the aggregate busiest hour from summed per-day
+// hour curves — so a one-day view and a year-wide view use the same math.
+function aggregateBusinessStats(list){
+  let entries=0, peopleOut=0, timeWeighted=0;
+  const hourTotals = new Array(24).fill(0);
+  for(const d of list){
+    entries += d.entries;
+    peopleOut += d.peopleOut;
+    timeWeighted += d.avgTime * d.entries;
+    for(let h=0;h<24;h++) hourTotals[h]+=d.hourCounts[h];
+  }
+  let busiestHour = 0, best = -1;
+  for(let h=0;h<24;h++){ if(hourTotals[h]>best){ best=hourTotals[h]; busiestHour=h; } }
+  return { entries, peopleOut, avgTime: entries>0 ? timeWeighted/entries : 0, busiestHour };
+}
+
+function currentViewStats(){
+  if(level==='year' || level==='months'){
+    const list = EXISTING;
+    return { label:'Year to date', days:list.length, weeks:DISTINCT_WEEKS_ELAPSED, ...aggregateBusinessStats(list) };
+  }
+  if(level==='weeks'){
+    const list = days.filter(d=>d.month===sel.month && d.exists);
+    return { label:`${MONTH_NAMES[sel.month]} 2026`, days:list.length, weeks:monthsMeta[sel.month].weeksInMonth, ...aggregateBusinessStats(list) };
+  }
+  const list = days.filter(d=>d.month===sel.month && d.weekInMonth===sel.week && d.exists);
+  return { label:`${MONTH_NAMES[sel.month]} · Week ${sel.week}`, days:list.length, weeks:1, ...aggregateBusinessStats(list) };
+}
+
+/* ============================================================ events */
+function wireEvents(){
+  const dom = renderer.domElement;
+  const tooltip = document.getElementById('tooltip');
+
+  dom.addEventListener('pointermove', (e)=>{
+    const hit = pickDay(e.clientX, e.clientY);
+    if(hit){
+      const { main, sub } = tooltipLabel(hit);
+      tooltip.innerHTML = `<div>${main}</div><div class="tt-sub">${sub}</div>`;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX+16)+'px';
+      tooltip.style.top = (e.clientY+16)+'px';
+      dom.style.cursor = (level==='days') ? 'default' : 'pointer';
+    } else {
+      tooltip.style.display = 'none';
+      dom.style.cursor = 'default';
+    }
+  });
+
+  dom.addEventListener('click', (e)=>{
+    const hit = pickDay(e.clientX, e.clientY);
+    if(hit){
+      if(level==='year') startTransition('months', {month:null,week:null}, true);
+      else if(level==='months') startTransition('weeks', {month:hit.month, week:null}, true);
+      else if(level==='weeks') startTransition('days', {month:sel.month, week:hit.weekInMonth}, true);
+      // 'days' level: deepest — click on a day is inert
+    } else {
+      zoomOut();
+    }
+  });
+
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') zoomOut(); });
+  document.getElementById('zoomOutLink').addEventListener('click', zoomOut);
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+}
+
+/* ============================================================== loop */
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const elapsed = clock.elapsedTime;
+
+  if(transitioning){
+    const raw = Math.min(1, (now - tStart)/tDuration);
+    const e = easeInOutCubic(raw);
+    for(let i=0;i<N;i++){
+      posCurBase[i*3]   = THREE.MathUtils.lerp(posFrom[i*3],   posTo[i*3],   e);
+      posCurBase[i*3+1] = THREE.MathUtils.lerp(posFrom[i*3+1], posTo[i*3+1], e);
+      posCurBase[i*3+2] = THREE.MathUtils.lerp(posFrom[i*3+2], posTo[i*3+2], e);
+      sizeCurBase[i]  = THREE.MathUtils.lerp(sizeFrom[i],  sizeTo[i],  e);
+      alphaCurBase[i] = THREE.MathUtils.lerp(alphaFrom[i], alphaTo[i], e);
+      colorCurBase[i*3]   = THREE.MathUtils.lerp(colorFrom[i*3],   colorTo[i*3],   e);
+      colorCurBase[i*3+1] = THREE.MathUtils.lerp(colorFrom[i*3+1], colorTo[i*3+1], e);
+      colorCurBase[i*3+2] = THREE.MathUtils.lerp(colorFrom[i*3+2], colorTo[i*3+2], e);
+    }
+    if(raw>=1) transitioning = false;
+  }
+
+  // render buffer = settled/tweened base + continuous organic drift
+  for(let i=0;i<N;i++){
+    const dx = Math.sin(elapsed*0.6 + i*12.9)*DRIFT_AMT;
+    const dy = Math.cos(elapsed*0.5 + i*7.3)*DRIFT_AMT;
+    const dz = Math.sin(elapsed*0.4 + i*3.1)*DRIFT_AMT;
+    posAttr.array[i*3]   = posCurBase[i*3]   + dx;
+    posAttr.array[i*3+1] = posCurBase[i*3+1] + dy;
+    posAttr.array[i*3+2] = posCurBase[i*3+2] + dz;
+    sizeAttr.array[i]  = sizeCurBase[i];
+    alphaAttr.array[i] = alphaCurBase[i];
+    colorAttr.array[i*3]   = colorCurBase[i*3];
+    colorAttr.array[i*3+1] = colorCurBase[i*3+1];
+    colorAttr.array[i*3+2] = colorCurBase[i*3+2];
+  }
+  posAttr.needsUpdate = true; sizeAttr.needsUpdate = true; alphaAttr.needsUpdate = true; colorAttr.needsUpdate = true;
+
+  dust.rotation.y += dt*0.008;
+  dust.rotation.x += dt*0.003;
+
+  if(cameraTween){
+    const raw = Math.min(1, (now - cameraTween.tStart)/cameraTween.tDuration);
+    const e = easeInOutCubic(raw);
+    const d = THREE.MathUtils.lerp(cameraTween.startDist, cameraTween.endDist, e);
+    // Only ever move along the direction already established when the tween
+    // started — this changes radius (zoom), never orbit angle, and is
+    // immediately followed by controls.update() every frame so OrbitControls'
+    // internal spherical state stays derived from the position we just set
+    // rather than drifting out of sync with it.
+    camera.position.copy(controls.target).addScaledVector(cameraTween.dir, d);
+    if(raw>=1) cameraTween = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+try{
+  init();
+  loadRealMetrics();
+}catch(err){
+  console.error('Time Orb failed to start:', err);
+  document.getElementById('loadErr').style.display='flex';
+}
+</script>
+</body>
+</html>

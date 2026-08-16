@@ -18,6 +18,7 @@ picture.
 """
 
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -147,3 +148,16 @@ def service_point_stats(days: int = 30):
     if days not in VALID_DAYS:
         raise HTTPException(400, f"days must be one of {VALID_DAYS}")
     return metrics_store.service_point_stats(days)
+
+
+# ------------------------------------------------------------- year orb -----
+
+@router.get("/orb")
+def orb_year(year: int = 2026):
+    """Per-day store metrics for one calendar year, shaped for the year orb
+    (admin_portal/static/time-orb.html) — it fetches this once and
+    aggregates client-side at whatever zoom level the visitor is on. Days
+    with no logged activity are simply absent from `days`."""
+    start = datetime(year, 1, 1).timestamp()
+    end = datetime(year + 1, 1, 1).timestamp()
+    return {"year": year, "days": metrics_store.daily_visitor_metrics(start, end)}

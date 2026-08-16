@@ -15,6 +15,7 @@ Run from the project root:
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from urllib.parse import quote
 
@@ -95,6 +96,16 @@ def redirect(path, ok=None, error=None, status_code=303):
 
 def render(request, template_name, **context):
     return templates.TemplateResponse(request, template_name, context)
+
+
+def _format_age(seconds):
+    if seconds < 90:
+        return f"{int(seconds)}s ago"
+    if seconds < 5400:
+        return f"{round(seconds / 60)} min ago"
+    if seconds < 86400 * 2:
+        return f"{round(seconds / 3600)} hr ago"
+    return f"{round(seconds / 86400)} days ago"
 
 
 # ---------------------------------------------------------------- media ----
@@ -276,8 +287,25 @@ def jobs_page(request: Request):
     job_list = []
     for status in jobs.manager.all_statuses():
         job = jobs.manager.get(status["name"])
-        job_list.append({**status, "log": job.tail(300)})
-    return render(request, "jobs.html", active="jobs", jobs=job_list)
+        job_list.append({**status, "log": job.tail(300), "resource": job.resource_usage()})
+
+    health = metrics_store.db_health()
+    newest_ts = health["newest_event_ts"]
+    dashboard_job = jobs.manager.get("dashboard")
+    dashboard_running = bool(dashboard_job and dashboard_job.is_running())
+    if newest_ts is None:
+        newest_label, stale = "no data yet", False
+    else:
+        age = time.time() - newest_ts
+        newest_label = _format_age(age)
+        # Only flags as stale while the dashboard is supposedly running —
+        # no data is expected and unremarkable when it's stopped.
+        stale = dashboard_running and age > 60
+
+    return render(
+        request, "jobs.html", active="jobs", jobs=job_list,
+        db_health=health, db_newest_label=newest_label, db_stale=stale,
+    )
 
 
 @app.post("/jobs/start/{job_type}")
@@ -313,6 +341,78 @@ def jobs_stop(job_name: str):
         raise HTTPException(404)
     job.stop()
     return redirect("/jobs", ok=f"Stopped {job_name}.")
+
+
+@app.post("/jobs/reset-data")
+def jobs_reset_data():
+    """Clears every recorded metric (entries/exits, visits, positions,
+    service times) — the numbers behind Insights, On the Floor, and the
+    orb all go back to zero. Cameras, zones and calibration are untouched."""
+    metrics_store.reset_all()
+    return redirect("/jobs", ok="All recorded data cleared — Insights, On the Floor, and the orb start from zero.")
+
+
+# ------------------------------------------------------------- on floor ----
+
+@app.get("/floor")
+def floor_page(request: Request):
+    """A glance, not a workspace: today's headline numbers plus which
+    cameras are currently reporting. Deliberately narrow in scope — this is
+    the page someone checks from a phone on the sales floor, not a second
+    Insights page. Everything with real analytical depth stays on Insights.
+    """
+    from datetime import date, datetime, timedelta
+
+    now = datetime.now()
+    today_start = datetime.combine(now.date(), datetime.min.time()).timestamp()
+    today_end = now.timestamp()
+
+    # Compared against the SAME weekday last week, bounded to the same
+    # elapsed portion of the day — a full day vs. a partial day would flatter
+    # or bury today's number depending purely on what time you happen to load
+    # this page.
+    last_week_date = now.date() - timedelta(days=7)
+    lw_start = datetime.combine(last_week_date, datetime.min.time()).timestamp()
+    lw_end = lw_start + (today_end - today_start)
+    compare_weekday = last_week_date.strftime("%A")
+
+    totals_today = metrics_store.totals(start=today_start, end=today_end)
+    entries_today = totals_today["entries"]
+    in_store_now = max(0, entries_today - totals_today["exits"])
+
+    entries_last_week = metrics_store.totals(start=lw_start, end=lw_end)["entries"]
+    pct_change = None
+    if entries_last_week > 0:
+        pct_change = round((entries_today - entries_last_week) / entries_last_week * 100)
+
+    reporting_ids = metrics_store.cameras_active(start=today_start, end=today_end)
+
+    svc_today = metrics_store.service_point_stats(start=today_start, end=today_end)
+    avg_wait_seconds = None
+    slowest_point = None
+    if svc_today:
+        total_customers = sum(s["customers"] for s in svc_today)
+        if total_customers:
+            avg_wait_seconds = sum(s["avg_seconds"] * s["customers"] for s in svc_today) / total_customers
+        slowest_point = max(svc_today, key=lambda s: s["avg_seconds"])
+
+    peak_today = metrics_store.peak_hours(start=today_start, end=today_end)
+    busiest_today = max(peak_today, key=lambda p: p[1]) if any(c for _, c in peak_today) else None
+
+    cameras = store.load_cameras()
+
+    return render(
+        request, "floor.html", active="floor",
+        cameras=cameras,
+        in_store_now=in_store_now,
+        reporting_count=len(reporting_ids),
+        entries_today=entries_today,
+        pct_change=pct_change,
+        compare_weekday=compare_weekday,
+        avg_wait_seconds=avg_wait_seconds,
+        slowest_point=slowest_point,
+        busiest_today=busiest_today,
+    )
 
 
 # ----------------------------------------------------------- insights ------

@@ -215,6 +215,29 @@ a:hover { color: var(--accent-hover); }
   margin: 2rem 0 0.75rem;
 }
 
+/* ------------------------------------------------------------- time orb --- */
+/* The one deliberately dark surface inside an otherwise light, paper-toned
+   page — same rationale as .canvas elsewhere: this frames a WebGL scene,
+   and a dark surround is what makes it read correctly, not a style choice
+   made for its own sake. */
+.orb-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+.orb-header .btn { flex: none; white-space: nowrap; }
+.orb-embed {
+  border: 1px solid var(--rule);
+  background: oklch(0.16 0.008 70);
+  height: 600px;
+  overflow: hidden;
+}
+.orb-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
+@media (max-width: 700px) { .orb-embed { height: 460px; } }
+
 /* ----------------------------------------------------------- range bar --- */
 
 .range-bar {
@@ -493,3 +516,74 @@ pre.log {
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* --------------------------------------------------------- on the floor --- */
+/* A phone-glance status board: two bordered cards side by side. This is a
+   deliberate departure from ".panel"'s rule-only "no cards" treatment used
+   everywhere else — that rule exists to stop cards being a lazy affordance
+   in long-form reports, but this page is a different kind of surface
+   (a compact glance, not a report), and a bordered box is the right
+   affordance for "here is one self-contained status board." */
+.floor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.75rem;
+  margin-top: 2rem;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .floor-grid { grid-template-columns: 1fr; }
+}
+
+.floor-card {
+  border: 1px solid var(--rule);
+  padding: 1.25rem 1.5rem 0.5rem;
+}
+.floor-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.9rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 2px solid var(--ink);
+}
+.floor-card-head h2 { margin: 0; font-size: var(--t-h3); }
+.floor-card-head .brand { gap: 0.55rem; }
+.floor-card-head .mark { width: 18px; height: auto; }
+.floor-card-head .wordmark { font-size: 0.8rem; }
+
+.floor-stat { padding: 0.85rem 0; border-bottom: 1px solid var(--rule); }
+.floor-stat:last-child { border-bottom: none; }
+.floor-big {
+  font-size: var(--t-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0.2rem 0 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.floor-cam-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.floor-cam-row:last-child { border-bottom: none; }
+.floor-cam-thumb {
+  width: 64px; height: 42px; flex: none;
+  background: oklch(0.16 0.008 70);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+.floor-cam-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.floor-cam-meta { flex: 1; min-width: 0; }
+.floor-cam-name { font-weight: 600; font-size: var(--t-small); }
+.floor-cam-meta .badge { margin-top: 0.3rem; }
+.floor-cam-count { flex: none; font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+
+/* A lone "—" inheriting a display-size (2.5rem) numeral font-size renders
+   as an oversized horizontal bar — reads as a rendering glitch, not as
+   "no data yet". Used wherever a big-figure tile falls back to a dash. */
+.value-empty { font-size: var(--t-h2); color: var(--ink-faint); font-weight: 400; }

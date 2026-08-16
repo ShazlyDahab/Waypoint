@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Camera, ConnectionState, listCameras, referenceFrameUrl } from "../lib/api";
 import Brand from "../components/Brand";
+import AppNav from "../components/AppNav";
 
 // The Live Monitoring hub — what used to be the floor-plan page's job.
 // Cameras are the organizing unit now: there is no store map, so a camera
@@ -63,8 +64,7 @@ export default function CamerasPage() {
     <>
       <header className="topbar">
         <Brand />
-        <Link className="back" to="/grid" style={{ marginLeft: "auto" }}>Grid wall →</Link>
-        <a className="back" href="/">← admin portal</a>
+        <AppNav />
       </header>
       <main className="page">
         <h1>Live monitoring</h1>

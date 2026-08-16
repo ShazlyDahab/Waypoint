@@ -7,6 +7,54 @@ OpenCV preview windows on whichever machine runs this portal server — if that'
 output/logs below instead of expecting a window to appear.</p>
 
 <div class="panel">
+  <h2>System health</h2>
+  <p class="muted">
+    A plain <code>ps</code> read on each running process — no monitoring stack, no extra dependency, nothing
+    running when nothing else is. If this system is meant to stay lightweight, this is where you'd see it stop
+    being that.
+  </p>
+  <table>
+    <tr><th>Process</th><th>State</th><th>Uptime</th><th>CPU</th><th>Memory</th></tr>
+    {% for j in jobs if j.name in ('dashboard', 'restreamer') %}
+    <tr>
+      <td>{{ 'Live dashboard' if j.name == 'dashboard' else 'Restreamer (go2rtc)' }}</td>
+      <td>
+        {% if j.state == 'running' %}
+          {% if j.resource and j.resource.cpu_percent > 85 %}<span class="badge badge-warn">running, high CPU</span>
+          {% else %}<span class="badge badge-ok">running</span>{% endif %}
+        {% elif j.state == 'failed' %}<span class="badge badge-danger">failed</span>
+        {% else %}<span class="badge badge-muted">stopped</span>{% endif %}
+      </td>
+      <td>{{ j.resource.elapsed if j.resource else '—' }}</td>
+      <td>{{ (j.resource.cpu_percent ~ '%') if j.resource else '—' }}</td>
+      <td>{{ (j.resource.memory_mb ~ ' MB') if j.resource else '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="muted">Neither process has been started yet.</td></tr>
+    {% endfor %}
+  </table>
+
+  <h3 style="font-size:0.9rem;margin-top:1.5rem">Data store</h3>
+  <table>
+    <tr><th>Recorded rows</th><th>On disk</th><th>Most recent event</th></tr>
+    <tr>
+      <td>{{ db_health.total_rows }}</td>
+      <td>{{ (db_health.size_bytes / 1048576) | round(2) }} MB</td>
+      <td>
+        {{ db_newest_label }}
+        {% if db_stale %}<span class="badge badge-warn">stale</span>{% endif %}
+      </td>
+    </tr>
+  </table>
+  {% if db_stale %}
+  <p class="muted" style="margin-top:0.6rem">
+    The dashboard is running but nothing has been recorded recently — check its log below for a stalled or
+    disconnected camera.
+  </p>
+  {% endif %}
+</div>
+
+<div class="panel">
   <form class="inline" method="post" action="/jobs/start/calibrate_all">
     <button class="btn" type="submit">Run calibration (all cameras)</button>
   </form>
@@ -44,4 +92,38 @@ counts, insights — works without it; only live video needs it.</p>
 {% else %}
 <div class="panel"><p class="muted">No jobs have been started yet.</p></div>
 {% endfor %}
+
+<div class="panel">
+  <h2>Danger zone</h2>
+  <p class="muted">
+    Clears every recorded entry, exit, visit, position sample, and service-point time —
+    <strong>{{ db_health.total_rows }} row(s)</strong> right now. Insights, On the Floor, and the year orb all
+    go back to zero. Camera registry, zones, and calibration are untouched. This cannot be undone.
+  </p>
+  <form method="post" action="/jobs/reset-data">
+    <button class="btn btn-sm btn-danger" type="submit" onclick="return armConfirm(this, event)">Reset all recorded data</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Same two-click confirm as Cameras — see admin_portal/templates/cameras.html
+  // for why this replaced window.confirm().
+  function armConfirm(btn, event) {
+    if (btn.dataset.armed === '1') {
+      return true;
+    }
+    event.preventDefault();
+    btn.dataset.armed = '1';
+    const original = btn.textContent;
+    btn.textContent = 'Click again to confirm';
+    clearTimeout(btn._revertTimer);
+    btn._revertTimer = setTimeout(() => {
+      btn.dataset.armed = '0';
+      btn.textContent = original;
+    }, 3000);
+    return false;
+  }
+</script>
 {% endblock %}

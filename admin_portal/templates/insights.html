@@ -21,36 +21,28 @@
 
 <div class="kpi-row">
   <div class="kpi-tile">
-    <div class="kpi-label">Store entries</div>
+    <div class="kpi-label">People In</div>
     <div class="kpi-value">{{ "{:,}".format(totals.entries) }}</div>
-    <div class="muted" style="font-size:0.75rem">people walking in</div>
   </div>
   <div class="kpi-tile">
-    <div class="kpi-label">Store exits</div>
+    <div class="kpi-label">People Out</div>
     <div class="kpi-value">{{ "{:,}".format(totals.exits) }}</div>
-    <div class="muted" style="font-size:0.75rem">people walking out</div>
   </div>
   <div class="kpi-tile">
-    <div class="kpi-label">Unique visitors</div>
-    <div class="kpi-value">{{ "{:,}".format(true_unique_visitors) }}</div>
-    <div class="muted" style="font-size:0.75rem">{{ totals.raw_new_visitors }} raw &minus; {{ confirmed_merges }} confirmed merge(s)</div>
-  </div>
-  <div class="kpi-tile">
-    <div class="kpi-label">Avg time in store</div>
+    <div class="kpi-label">Average Time Spent Inside</div>
     <div class="kpi-value">
-      {% if visit_stats.avg_seconds %}{{ (visit_stats.avg_seconds / 60)|round(1) }} min{% else %}—{% endif %}
+      {% if visit_stats.avg_seconds %}{{ (visit_stats.avg_seconds / 60)|round(1) }} min{% else %}<span class="value-empty">—</span>{% endif %}
     </div>
-    <div class="muted" style="font-size:0.75rem">{{ visit_stats.visits }} visit(s) measured</div>
   </div>
   <div class="kpi-tile">
-    <div class="kpi-label">Busiest hour</div>
-    <div class="kpi-value">{% if busiest_hour and busiest_hour[1] > 0 %}{{ "%02d:00"|format(busiest_hour[0]) }}{% else %}—{% endif %}</div>
+    <div class="kpi-label">Busiest Hour</div>
+    <div class="kpi-value">{% if busiest_hour and busiest_hour[1] > 0 %}{{ "%02d:00"|format(busiest_hour[0]) }}{% else %}<span class="value-empty">—</span>{% endif %}</div>
   </div>
 </div>
 
 {% if confirmed_merges == 0 and totals.raw_new_visitors > 0 %}
-<p class="muted">No identity reviews have been confirmed yet — unique visitor counts above are the raw count.
-Check the <a href="/reviews">Review Queue</a> to correct for the same person being counted twice on different cameras.</p>
+<p class="muted">Visitor identity hasn't been reviewed yet in this range — the same person crossing two cameras may
+be counted twice below. Check the <a href="/reviews">Review Queue</a> to correct for that.</p>
 {% endif %}
 
 <div class="panel insight-section">
@@ -125,6 +117,20 @@ Check the <a href="/reviews">Review Queue</a> to correct for the same person bei
       {% if has_visitor_data %}{{ visitors_chart|safe }}{{ visitors_table|safe }}
       {% else %}<p class="muted">No data yet in this range.</p>{% endif %}
     </div>
+  </div>
+</div>
+
+<div class="panel insight-section">
+  <div class="orb-header">
+    <div>
+      <h2>Explore your year</h2>
+      <p class="muted">Every day this year as a point in a living orb — drill from the whole year down to a
+        single day. An exploratory view, not a daily report.</p>
+    </div>
+    <a class="btn btn-sm" href="/static/time-orb.html" target="_blank" rel="noopener">Open full screen ↗</a>
+  </div>
+  <div class="orb-embed">
+    <iframe src="/static/time-orb.html" loading="lazy" title="Time Orb — 2026"></iframe>
   </div>
 </div>
 

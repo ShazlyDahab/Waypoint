@@ -3,7 +3,6 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import CamerasPage from "./pages/CamerasPage";
 import CameraViewPage from "./pages/CameraViewPage";
-import GridPage from "./pages/GridPage";
 import DiscoveryPage from "./pages/DiscoveryPage";
 import "./index.css";
 
@@ -16,7 +15,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/" element={<Navigate to="/cameras" replace />} />
         <Route path="/cameras" element={<CamerasPage />} />
         <Route path="/cameras/:cameraId/view" element={<CameraViewPage />} />
-        <Route path="/grid" element={<GridPage />} />
         <Route path="/discovery" element={<DiscoveryPage />} />
         <Route path="*" element={<Navigate to="/cameras" replace />} />
       </Routes>

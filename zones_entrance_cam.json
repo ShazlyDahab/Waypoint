@@ -44,7 +44,7 @@
         ]
       ],
       "point_count": 96,
-      "leads_to": null
+      "leads_to": "checkout_cam"
     }
   ],
   "calibrated_at": "2026-08-05 09:12:00",

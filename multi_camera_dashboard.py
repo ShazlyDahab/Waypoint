@@ -127,7 +127,12 @@ def load_zone_config(camera_id):
 
 
 def camera_worker(camera_id, rtsp_url):
-    entrance_line = load_zone_config(camera_id)
+    try:
+        entrance_line = load_zone_config(camera_id)
+    except FileNotFoundError:
+        print(f"[{camera_id}] No zones_{camera_id}.json yet — calibrate this camera "
+              f"(Cameras -> Recalibrate) before starting the dashboard. Skipping.")
+        return
     service_points = load_service_points(camera_id)
     last_service_reload_at = time.time()
     tracker = sv.ByteTrack()

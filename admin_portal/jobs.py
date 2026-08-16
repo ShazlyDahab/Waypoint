@@ -93,6 +93,29 @@ class Job:
             content = f.readlines()
         return "".join(content[-lines:])
 
+    def resource_usage(self):
+        """CPU%/memory/uptime via the system `ps`, not a new dependency —
+        matches this repo's plain-subprocess style (no psutil, no Docker).
+        None while not running, or if `ps` can't be read for any reason."""
+        if not self.is_running():
+            return None
+        try:
+            result = subprocess.run(
+                ["ps", "-o", "%cpu=,rss=,etime=", "-p", str(self.process.pid)],
+                capture_output=True, text=True, timeout=2,
+            )
+            parts = result.stdout.split()
+            if len(parts) < 3:
+                return None
+            cpu_percent, rss_kb, etime = parts[0], parts[1], parts[2]
+            return {
+                "cpu_percent": float(cpu_percent),
+                "memory_mb": round(float(rss_kb) / 1024, 1),
+                "elapsed": etime,
+            }
+        except Exception:
+            return None
+
 
 class JobManager:
     def __init__(self):
@@ -121,19 +144,24 @@ class JobManager:
 
 manager = JobManager()
 
-PYTHON = sys.executable
+# -u: unbuffered stdout/stderr. Without it, output redirected to a log file
+# (not a TTY) gets fully block-buffered by the child process — a print()
+# can sit invisible for minutes while the Jobs page's log tail shows
+# nothing new, which looks exactly like a hang. Health/lag visibility is
+# the point of that tail, so it has to be live.
+PYTHON = [sys.executable, "-u"]
 
 
 def start_calibrate_all():
-    return manager.start("calibrate_all", [PYTHON, "calibrate_zones.py"])
+    return manager.start("calibrate_all", [*PYTHON, "calibrate_zones.py"])
 
 
 def start_calibrate_camera(camera_id):
-    return manager.start(f"calibrate_{camera_id}", [PYTHON, "calibrate_zones.py", camera_id])
+    return manager.start(f"calibrate_{camera_id}", [*PYTHON, "calibrate_zones.py", camera_id])
 
 
 def start_dashboard():
     # --no-display: this job runs headless (stdout redirected to a log
     # file, no display attached) — cv2.imshow/waitKey would error here
     # regardless of anything else, a pre-existing issue this flag fixes.
-    return manager.start("dashboard", [PYTHON, "multi_camera_dashboard.py", "--no-display"])
+    return manager.start("dashboard", [*PYTHON, "multi_camera_dashboard.py", "--no-display"])

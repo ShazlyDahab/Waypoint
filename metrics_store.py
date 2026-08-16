@@ -207,6 +207,43 @@ def log_service_point_visit(camera_id, point_name, visitor_id, seconds, ts=None)
         conn.commit()
 
 
+_METRIC_TABLES = (
+    "entry_exit_events", "visitor_events", "position_samples",
+    "visit_sessions", "service_point_visits",
+)
+
+
+def reset_all():
+    """Deletes every row from every metrics table — irreversible. Camera
+    registry, zones, calibration and review-queue decisions are untouched;
+    this only clears recorded history (entries/exits, visits, positions,
+    service times) so the store can start counting from zero again."""
+    with _lock:
+        conn = _connect()
+        for table in _METRIC_TABLES:
+            conn.execute(f"DELETE FROM {table}")
+        conn.commit()
+        try:
+            conn.execute("VACUUM")
+        except sqlite3.Error:
+            pass  # reclaiming disk space is a bonus, not required for a correct reset
+
+
+def db_health():
+    """Row counts, on-disk size, and how recent the newest event is — the
+    Jobs page's "is this actually collecting data, and is it piling up"
+    check. newest_event_ts is None when entry_exit_events is empty."""
+    conn = _connect()
+    counts = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in _METRIC_TABLES}
+    newest = conn.execute("SELECT MAX(ts) FROM entry_exit_events").fetchone()[0]
+    return {
+        "counts": counts,
+        "total_rows": sum(counts.values()),
+        "newest_event_ts": newest,
+        "size_bytes": DB_PATH.stat().st_size if DB_PATH.exists() else 0,
+    }
+
+
 # ------------------------------------------------------- read-side queries --
 
 def _bounds(days=30, start=None, end=None):
@@ -356,6 +393,71 @@ def position_heatmap(camera_id, days=30, grid=48, start=None, end=None):
         matrix[cy][cx] += 1
     peak = max((v for row in matrix for v in row), default=0)
     return {"grid": grid, "matrix": matrix, "samples": len(rows), "peak": peak}
+
+
+def daily_hourly_entries(start, end):
+    """Entries per day, broken out by hour of day, for an explicit [start,
+    end) window. Powers the year orb (time-orb.html): a day view sums to
+    its own 24 buckets, a week/month/year view sums matching days together
+    — so busiest-hour aggregates correctly at every zoom level."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT date(ts, 'unixepoch', 'localtime') AS day, "
+        "CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) AS hour, COUNT(*) "
+        "FROM entry_exit_events WHERE direction='in' AND ts >= ? AND ts <= ? "
+        "GROUP BY day, hour",
+        (start, end),
+    ).fetchall()
+    by_day = {}
+    for day, hour, count in rows:
+        by_day.setdefault(day, [0] * 24)[int(hour)] = count
+    return by_day
+
+
+def daily_visit_seconds(start, end):
+    """Average time-in-store per day, grouped by the day a visit STARTED.
+    Same 5s pass-through floor as visit_length_stats."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT date(first_seen, 'unixepoch', 'localtime') AS day, AVG(last_seen - first_seen) "
+        "FROM visit_sessions WHERE first_seen >= ? AND first_seen <= ? "
+        "AND (last_seen - first_seen) >= 5.0 GROUP BY day",
+        (start, end),
+    ).fetchall()
+    return {day: (avg or 0.0) for day, avg in rows}
+
+
+def daily_visitor_metrics(start, end):
+    """Per-day entries/exits/avg-time/hourly-entries for an explicit [start,
+    end) window — the shape the year orb aggregates from at any zoom level
+    (day/week/month/year) without a separate request per level. Days with
+    no logged activity simply don't appear in the result."""
+    ee = daily_entries_exits(start=start, end=end)
+    hourly = daily_hourly_entries(start, end)
+    avg_seconds = daily_visit_seconds(start, end)
+    out = []
+    for row in ee:
+        day = row["day"]
+        out.append({
+            "day": day,
+            "entries": row["entries"],
+            "exits": row["exits"],
+            "avg_visit_seconds": round(avg_seconds.get(day, 0.0), 1),
+            "hour_counts": hourly.get(day, [0] * 24),
+        })
+    return out
+
+
+def cameras_active(days=1, start=None, end=None):
+    """Distinct camera_ids that logged at least one entry/exit in the window.
+    Used for "reporting cameras" counts — a plain history query, not a live
+    connection check, so it works even when nothing is live right now."""
+    conn = _connect()
+    bounds = _bounds(days, start, end)
+    rows = conn.execute(
+        "SELECT DISTINCT camera_id FROM entry_exit_events WHERE ts >= ? AND ts <= ?", bounds
+    ).fetchall()
+    return [r[0] for r in rows]
 
 
 def totals(days=30, start=None, end=None):
